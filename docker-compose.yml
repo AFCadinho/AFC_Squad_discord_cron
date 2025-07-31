@@ -1,0 +1,10 @@
+services:
+  discordbot:
+    build: ./discord-bot
+    container_name: discordbot
+    restart: unless-stopped
+
+  cronjob:
+    build: ./cronjob_cws
+    container_name: cronbox
+    restart: unless-stopped

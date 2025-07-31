@@ -1,0 +1,9 @@
+# Crew Wars reminders - 5 minutes before each event (local time)
+
+55 17 * * 1 cd /home/adinho/Desktop/Discord\ Bot/PBO_Crew_Discord_Bot && /home/adinho/.local/bin/poetry run python webhook.py >> /home/adinho/Desktop/cronlog.txt 2>&1
+55 11 * * 3 cd /home/adinho/Desktop/Discord\ Bot/PBO_Crew_Discord_Bot && /home/adinho/.local/bin/poetry run python webhook.py >> /home/adinho/Desktop/cronlog.txt 2>&1
+55 21 * * 3 cd /home/adinho/Desktop/Discord\ Bot/PBO_Crew_Discord_Bot && /home/adinho/.local/bin/poetry run python webhook.py >> /home/adinho/Desktop/cronlog.txt 2>&1
+55 21 * * 4 cd /home/adinho/Desktop/Discord\ Bot/PBO_Crew_Discord_Bot && /home/adinho/.local/bin/poetry run python webhook.py >> /home/adinho/Desktop/cronlog.txt 2>&1
+55 4  * * 6 cd /home/adinho/Desktop/Discord\ Bot/PBO_Crew_Discord_Bot && /home/adinho/.local/bin/poetry run python webhook.py >> /home/adinho/Desktop/cronlog.txt 2>&1
+55 2  * * 0 cd /home/adinho/Desktop/Discord\ Bot/PBO_Crew_Discord_Bot && /home/adinho/.local/bin/poetry run python webhook.py >> /home/adinho/Desktop/cronlog.txt 2>&1
+55 19 * * 0 cd /home/adinho/Desktop/Discord\ Bot/PBO_Crew_Discord_Bot && /home/adinho/.local/bin/poetry run python webhook.py >> /home/adinho/Desktop/cronlog.txt 2>&1

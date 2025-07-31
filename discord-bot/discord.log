@@ -1,0 +1,16 @@
+2025-06-14 10:57:04,890 INFO Successfully loaded extension: crew_member_roles.py
+2025-06-14 10:57:05,012 INFO Successfully loaded extension: ladder_chest.py
+2025-06-14 10:57:05,013 INFO Successfully loaded extension: dynamax_raids.py
+2025-06-14 10:57:05,016 INFO Successfully loaded extension: game_tools.py
+2025-06-14 10:57:05,017 INFO Successfully loaded extension: help.py
+2025-06-14 10:57:05,018 INFO Successfully loaded extension: trader_events.py
+2025-06-14 10:57:05,019 INFO Successfully loaded extension: pokepaste.py
+2025-06-14 10:57:05,022 INFO Successfully loaded extension: application_logger.py
+2025-06-14 10:57:05,023 INFO Successfully loaded extension: crewwars.py
+2025-06-14 10:57:05,023 INFO Successfully loaded extension: rules.py
+2025-06-14 10:57:05,024 INFO logging in using static token
+2025-06-14 10:57:06,193 INFO Shard ID None has connected to Gateway (Session ID: d1365fce3c3b991accd3f774914ca0d3).
+2025-06-14 10:57:08,215 INFO Loaded cogs: ['MembershipRoles', 'LadderChest', 'DynamaxRaids', 'GameTools', 'Help', 'TraderEvents', 'PokepasteCog', 'ApplicationLogger', 'CrewWars', 'Rules']
+2025-06-14 10:57:08,215 INFO We have successfully logged in as AFC Squad Official Bot#3767
+2025-06-14 10:57:08,215 INFO ------------------------------------------------
+2025-06-14 10:57:08,654 INFO Slash commands synced
