@@ -3,8 +3,27 @@ services:
     build: ./discord-bot
     container_name: discordbot
     restart: unless-stopped
+    volumes:
+      - ./discord-bot/alembic:/app/alembic
+      - ./discord-bot/db_backups:/app/db_backups
+    env_file:
+      - bot.env
 
   cronjob:
     build: ./cronjob_cws
     container_name: cronbox
     restart: unless-stopped
+
+  postgres:
+    image: postgres:16
+    container_name: afc_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

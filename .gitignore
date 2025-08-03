@@ -1,0 +1,7 @@
+# Ignore real env files
+.env
+*.env
+bot.env
+
+# But keep example env templates
+!*.env.example

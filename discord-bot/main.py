@@ -1,14 +1,12 @@
 import discord
 from discord.ext import commands
 import logging
-from dotenv import load_dotenv
 import os
 import asyncio
 from flask import Flask
-import threading  # ✅ you forgot this import
+import threading
 
 # Load environment variables
-load_dotenv()
 BOT_TOKEN = str(os.getenv("DISCORD_TOKEN"))
 GUILD_ID = os.getenv("GUILD_ID")
 
