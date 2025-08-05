@@ -16,36 +16,9 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
---
--- Name: public; Type: SCHEMA; Schema: -; Owner: afc_squad
---
-
--- *not* creating schema, since initdb creates it
-
-
-ALTER SCHEMA public OWNER TO afc_squad;
-
---
--- Name: SCHEMA public; Type: COMMENT; Schema: -; Owner: afc_squad
---
-
-COMMENT ON SCHEMA public IS '';
-
-
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
-
---
--- Name: alembic_version; Type: TABLE; Schema: public; Owner: afc_squad
---
-
-CREATE TABLE public.alembic_version (
-    version_num character varying(32) NOT NULL
-);
-
-
-ALTER TABLE public.alembic_version OWNER TO afc_squad;
 
 --
 -- Name: loans; Type: TABLE; Schema: public; Owner: afc_squad
@@ -93,12 +66,12 @@ CREATE TABLE public.pokemon (
     name character varying(64) NOT NULL,
     ability character varying(64) NOT NULL,
     nature character varying(16) NOT NULL,
+    tier character varying(16),
     discord_link text,
+    always_stored boolean DEFAULT false NOT NULL,
     loaned boolean DEFAULT false NOT NULL,
     in_storage boolean DEFAULT false NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    tier character varying(16),
-    always_stored boolean DEFAULT false NOT NULL
+    created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -135,8 +108,8 @@ CREATE TABLE public.users (
     discord_id bigint NOT NULL,
     username character varying(64) NOT NULL,
     country_timezone character varying(64),
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    is_active boolean DEFAULT true NOT NULL
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -186,15 +159,6 @@ ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_
 
 
 --
--- Data for Name: alembic_version; Type: TABLE DATA; Schema: public; Owner: afc_squad
---
-
-COPY public.alembic_version (version_num) FROM stdin;
-357d7312af9a
-\.
-
-
---
 -- Data for Name: loans; Type: TABLE DATA; Schema: public; Owner: afc_squad
 --
 
@@ -206,11 +170,33 @@ COPY public.loans (id, pokemon_id, user_id, borrowed_at, returned_at) FROM stdin
 -- Data for Name: pokemon; Type: TABLE DATA; Schema: public; Owner: afc_squad
 --
 
-COPY public.pokemon (id, name, ability, nature, discord_link, loaned, in_storage, created_at, tier, always_stored) FROM stdin;
-4	Lokix	Swarm	Adamant	https://discord.com/channels/1252628341220053013/1262875088605155358	f	f	2025-08-02 23:36:54.016845+00	UU	f
-2	Scizor	Swarm	Adamant	https://discord.com/channels/1252628341220053013/1401285165019566132	f	t	2025-08-02 22:35:08.721747+00	OU	f
-3	Garchomp	Rough skin	Jolly	https://discord.com/channels/1252628341220053013/1262875088605155358	f	t	2025-08-02 23:27:37.251596+00	OU	f
-5	Darkrai	Bad Dreams	Timid	https://discord.com/channels/1252628341220053013/1262875088605155358	f	t	2025-08-02 23:47:01.027283+00	OU	f
+COPY public.pokemon (id, name, ability, nature, tier, discord_link, always_stored, loaned, in_storage, created_at) FROM stdin;
+1	Slowking-Galar	Regenerator	Sassy	ou	https://discord.com/channels/1302588750630621184/1399200070439800854	f	f	f	2025-08-04 18:39:13.524884+00
+3	Alomomola	Regenerator	Relaxed	ou	https://discord.com/channels/1302588750630621184/1399200854619193364	f	f	f	2025-08-04 18:42:51.434982+00
+5	Iron Valiant	Quark Drive	Naive	ou	https://discord.com/channels/1302588750630621184/1399202526070308976	f	f	f	2025-08-04 18:45:16.987116+00
+7	Ceruledge	Weak Armor	Adamant	ou	https://discord.com/channels/1302588750630621184/1399203649300987974	f	f	f	2025-08-04 18:46:34.149021+00
+10	Pelipper	Drizzle	Bold	ou	https://discord.com/channels/1302588750630621184/1399266879725637632	f	f	f	2025-08-04 18:50:12.785001+00
+11	Skeledirge	Unaware	Careful	uu	https://discord.com/channels/1302588750630621184/1399267801117491241	f	f	f	2025-08-04 18:50:48.870282+00
+12	Politoed	Drizzle	Bold	uu	https://discord.com/channels/1302588750630621184/1399420573490348215	f	f	f	2025-08-04 18:51:35.339213+00
+13	Gardevoir	Trace	Timid	uu	https://discord.com/channels/1302588750630621184/1399420705098956852	f	f	f	2025-08-04 18:56:26.687572+00
+14	Conkeldurr	Guts	Adamant	uu	https://discord.com/channels/1302588750630621184/1399460608897847537	f	f	f	2025-08-04 18:56:49.526052+00
+15	Gyarados	Moxie	Jolly	uu	https://discord.com/channels/1302588750630621184/1399460802121044173	f	f	f	2025-08-04 18:57:16.44296+00
+16	Darkrai	Bad Dreams	Timid	ou	https://discord.com/channels/1302588750630621184/1399596671025025097	f	f	f	2025-08-04 18:57:47.247322+00
+17	Barraskewda	Swift Swim	Adamant	ou	https://discord.com/channels/1302588750630621184/1399597038357844120	f	f	f	2025-08-04 18:58:42.386483+00
+18	Buzzwole	Beast Boost	Careful	uu	https://discord.com/channels/1302588750630621184/1399597312283508797	f	f	f	2025-08-04 18:59:57.186091+00
+19	Heatran	Flash Fire	Rash	ou	https://discord.com/channels/1302588750630621184/1399805873295196170	f	f	f	2025-08-04 19:00:22.53774+00
+21	Iron Bundle	Quark Drive	Timid	ou	https://discord.com/channels/1302588750630621184/1400078741245268089	f	f	f	2025-08-04 19:01:40.606322+00
+22	Dragapult	Infiltrator	Naive	ou	https://discord.com/channels/1302588750630621184/1400180293763076106	f	f	f	2025-08-04 19:02:10.427184+00
+24	Corviknight	Pressure	Impish	ou	https://discord.com/channels/1302588750630621184/1400181182410526841	f	f	f	2025-08-04 19:05:03.130401+00
+26	Great Tusk	Protosynthesis	Jolly	ou	https://discord.com/channels/1302588750630621184/1399199801291309136	f	f	f	2025-08-04 19:06:44.828108+00
+2	Bisharp	Defiant	Adamant	uu	https://discord.com/channels/1302588750630621184/1399201390617825280	f	f	f	2025-08-04 18:42:09.101679+00
+4	Kingdra	Swift Swim	Modest	uu	https://discord.com/channels/1302588750630621184/1399201738724212808	f	f	f	2025-08-04 18:43:55.832426+00
+8	Scizor	Technician	Brave	uu	https://discord.com/channels/1302588750630621184/1399229273235128453	f	f	f	2025-08-04 18:47:50.736275+00
+9	Amoongus	Regenerator	Bold	uu	https://discord.com/channels/1302588750630621184/1399245513198665870	f	f	f	2025-08-04 18:49:10.643092+00
+20	Annihilape	Defiant	Careful	uu	https://discord.com/channels/1302588750630621184/1400073663063265341	f	f	f	2025-08-04 19:00:58.425125+00
+23	Gengar	Cursed Body	Timid	uu	https://discord.com/channels/1302588750630621184/1400180887567597611	f	f	f	2025-08-04 19:04:21.011493+00
+25	Moltres-Galar	Berserk	Modest	uu	https://discord.com/channels/1302588750630621184/1400585815976968325	f	f	f	2025-08-04 19:05:57.377555+00
+6	Garchomp	Rough Skin	Jolly	ou	https://discord.com/channels/1302588750630621184/1399203029282193579	t	f	t	2025-08-04 18:46:01.943531+00
 \.
 
 
@@ -218,8 +204,8 @@ COPY public.pokemon (id, name, ability, nature, discord_link, loaned, in_storage
 -- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: afc_squad
 --
 
-COPY public.users (id, discord_id, username, country_timezone, created_at, is_active) FROM stdin;
-2	195599180624822272	Adinho	Netherlands	2025-08-02 18:47:44.661542+00	f
+COPY public.users (id, discord_id, username, country_timezone, is_active, created_at) FROM stdin;
+1	195599180624822272	Adinho	Netherlands	t	2025-08-04 19:07:30.307698+00
 \.
 
 
@@ -234,22 +220,14 @@ SELECT pg_catalog.setval('public.loans_id_seq', 1, false);
 -- Name: pokemon_id_seq; Type: SEQUENCE SET; Schema: public; Owner: afc_squad
 --
 
-SELECT pg_catalog.setval('public.pokemon_id_seq', 5, true);
+SELECT pg_catalog.setval('public.pokemon_id_seq', 26, true);
 
 
 --
 -- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: afc_squad
 --
 
-SELECT pg_catalog.setval('public.users_id_seq', 2, true);
-
-
---
--- Name: alembic_version alembic_version_pkc; Type: CONSTRAINT; Schema: public; Owner: afc_squad
---
-
-ALTER TABLE ONLY public.alembic_version
-    ADD CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num);
+SELECT pg_catalog.setval('public.users_id_seq', 1, true);
 
 
 --
@@ -298,13 +276,6 @@ ALTER TABLE ONLY public.loans
 
 ALTER TABLE ONLY public.loans
     ADD CONSTRAINT loans_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
-
-
---
--- Name: SCHEMA public; Type: ACL; Schema: -; Owner: afc_squad
---
-
-REVOKE USAGE ON SCHEMA public FROM PUBLIC;
 
 
 --
