@@ -104,6 +104,55 @@ class CrewWars(commands.Cog):
             allowed_mentions=discord.AllowedMentions(roles=True)
         )
 
+    def get_next_events(self, count: int = 7):
+        now = datetime.datetime.now(datetime.timezone.utc)
+        upcoming = []
+
+        for ev in self.schedule:
+            event_day = self.weekdays[ev["day"]]
+            event_time = datetime.datetime.strptime(ev["time"], "%H:%M").time()
+            event_date = now.date() + datetime.timedelta((event_day - now.weekday()) % 7)
+            event_dt = datetime.datetime.combine(event_date, event_time).replace(tzinfo=datetime.timezone.utc)
+
+            if event_dt < now:
+                event_dt += datetime.timedelta(days=7)
+
+            upcoming.append((event_dt, ev["day"], ev["time"], ev["tier"]))
+
+        # Keep cycling forward until we have enough events
+        upcoming.sort(key=lambda x: x[0])
+        results = []
+        i = 0
+        while len(results) < count:
+            event_dt, day, time_str, tier = upcoming[i % len(upcoming)]
+            # Add 7 days for each full rotation through the schedule
+            event_dt = event_dt + datetime.timedelta(days=7 * (i // len(upcoming)))
+            results.append((event_dt, day, time_str, tier))
+            i += 1
+
+        return results
+
+    @app_commands.command(name="crewwars_schedule", description="Show the next 7 Crew Wars events.")
+    async def crewwars_schedule(self, interaction: discord.Interaction):
+        events = self.get_next_events(7)
+
+        embed = Embed(
+            title="🗓️ Next 7 Crew Wars",
+            description="All times are automatically adjusted to your local timezone.",
+            color=0x5865F2
+        )
+
+        for event_dt, day, _, tier in events:
+            ts = int(event_dt.timestamp())
+            embed.add_field(
+                name=day,
+                value=f"<t:{ts}:F> — (<t:{ts}:R>) • **{tier}**",
+                inline=False
+            )
+
+        await interaction.response.send_message(embed=embed)
+
+
 
 async def setup(bot):
     await bot.add_cog(CrewWars(bot))
