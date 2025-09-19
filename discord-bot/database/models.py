@@ -1,4 +1,5 @@
 import os
+import enum
 from datetime import datetime
 from typing import Optional, List
 
@@ -9,7 +10,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Use the env var (inside Docker: host=postgres). Fallback is just for ad-hoc local tests.
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
     "postgresql+psycopg2://user:password@localhost:5432/dbname"
@@ -17,6 +17,12 @@ DATABASE_URL = os.getenv(
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 Session = sessionmaker(engine)
+
+
+class PvpExperience(enum.Enum):
+    novice = "novice"
+    intermediate = "intermediate"
+    veteran = "veteran"
 
 
 class Base(DeclarativeBase):
@@ -32,6 +38,12 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true())
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+    )
+
+    pvp_experience: Mapped[str] = mapped_column(
+        sa.Text,
+        nullable=False,
+        server_default="novice"
     )
 
     # reverse side for Loan.user
@@ -82,5 +94,5 @@ class Loan(Base):
     def __repr__(self) -> str:
         return f"<Loan(pokemon_id={self.pokemon_id}, user_id={self.user_id}, borrowed_at={self.borrowed_at})>"
 
-# Create table(s) if not present
+
 Base.metadata.create_all(engine)

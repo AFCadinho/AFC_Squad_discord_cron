@@ -2,7 +2,7 @@ import discord
 import os
 from discord import app_commands
 from discord.ext import commands
-from database.models import Session, Pokemon
+from database.models import Session, Pokemon, User
 
 
 CATEGORY_ID = int(os.environ.get("LENDING_CATEGORY", "123456789012345678"))  # Category for lending channels
@@ -136,7 +136,12 @@ class Lending(commands.Cog):
     @app_commands.default_permissions(manage_channels=True)
     async def lend_approve(self, interaction: discord.Interaction, member: discord.Member , pokemon_name: str):
         session = Session()
-        
+
+        with session:
+            requesting_user = session.query(User).filter_by(discord_id=member.id)
+            if not requesting_user:
+                await interaction.response.send_message(f"User with discord id: {member.id} does not exist")
+
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Lending(bot))
