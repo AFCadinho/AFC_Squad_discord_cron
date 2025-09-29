@@ -1,2 +1,23 @@
+# Environment & logs
 *.env
-.log
+*.log
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+
+# Alembic cache
+alembic.ini
+alembic/versions/__pycache__/
+
+# Byte-compiled/misc
+*.so
+
+# Database backups
+discord-bot/db_backups/*.sql
