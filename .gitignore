@@ -5,3 +5,6 @@ bot.env
 
 # But keep example env templates
 !*.env.example
+
+# Editor settings
+.vscode/
