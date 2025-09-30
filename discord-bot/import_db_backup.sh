@@ -4,9 +4,13 @@ set -e
 
 
 # Load variables from .env
-set -a
-source .env
-set +a
+# Load variables only if a .env file exists
+if [ -f ".env" ]; then
+  set -a
+  source .env
+  set +a
+fi
+
 
 # --- Config ---
 BACKUP_DIR="db_backups"

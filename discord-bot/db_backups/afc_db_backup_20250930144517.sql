@@ -21,7 +21,15 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
--- Name: loans; Type: TABLE; Schema: public; Owner: afc_squad
+--
+
+CREATE TABLE public.alembic_version (
+    version_num character varying(32) NOT NULL
+);
+
+
+
+--
 --
 
 CREATE TABLE public.loans (
@@ -33,10 +41,8 @@ CREATE TABLE public.loans (
 );
 
 
-ALTER TABLE public.loans OWNER TO afc_squad;
 
 --
--- Name: loans_id_seq; Type: SEQUENCE; Schema: public; Owner: afc_squad
 --
 
 CREATE SEQUENCE public.loans_id_seq
@@ -48,17 +54,14 @@ CREATE SEQUENCE public.loans_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.loans_id_seq OWNER TO afc_squad;
 
 --
--- Name: loans_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: afc_squad
 --
 
 ALTER SEQUENCE public.loans_id_seq OWNED BY public.loans.id;
 
 
 --
--- Name: pokemon; Type: TABLE; Schema: public; Owner: afc_squad
 --
 
 CREATE TABLE public.pokemon (
@@ -75,10 +78,8 @@ CREATE TABLE public.pokemon (
 );
 
 
-ALTER TABLE public.pokemon OWNER TO afc_squad;
 
 --
--- Name: pokemon_id_seq; Type: SEQUENCE; Schema: public; Owner: afc_squad
 --
 
 CREATE SEQUENCE public.pokemon_id_seq
@@ -90,17 +91,14 @@ CREATE SEQUENCE public.pokemon_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.pokemon_id_seq OWNER TO afc_squad;
 
 --
--- Name: pokemon_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: afc_squad
 --
 
 ALTER SEQUENCE public.pokemon_id_seq OWNED BY public.pokemon.id;
 
 
 --
--- Name: users; Type: TABLE; Schema: public; Owner: afc_squad
 --
 
 CREATE TABLE public.users (
@@ -109,14 +107,13 @@ CREATE TABLE public.users (
     username character varying(64) NOT NULL,
     country_timezone character varying(64),
     is_active boolean DEFAULT true NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    pvp_experience character varying(16) DEFAULT 'novice'::character varying NOT NULL
 );
 
 
-ALTER TABLE public.users OWNER TO afc_squad;
 
 --
--- Name: users_id_seq; Type: SEQUENCE; Schema: public; Owner: afc_squad
 --
 
 CREATE SEQUENCE public.users_id_seq
@@ -128,34 +125,38 @@ CREATE SEQUENCE public.users_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.users_id_seq OWNER TO afc_squad;
 
 --
--- Name: users_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: afc_squad
 --
 
 ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
 
 
 --
--- Name: loans id; Type: DEFAULT; Schema: public; Owner: afc_squad
 --
 
 ALTER TABLE ONLY public.loans ALTER COLUMN id SET DEFAULT nextval('public.loans_id_seq'::regclass);
 
 
 --
--- Name: pokemon id; Type: DEFAULT; Schema: public; Owner: afc_squad
 --
 
 ALTER TABLE ONLY public.pokemon ALTER COLUMN id SET DEFAULT nextval('public.pokemon_id_seq'::regclass);
 
 
 --
--- Name: users id; Type: DEFAULT; Schema: public; Owner: afc_squad
 --
 
 ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
+
+
+--
+-- Data for Name: alembic_version; Type: TABLE DATA; Schema: public; Owner: afc_squad
+--
+
+COPY public.alembic_version (version_num) FROM stdin;
+b99403bebda0
+\.
 
 
 --
@@ -211,39 +212,48 @@ COPY public.pokemon (id, name, ability, nature, tier, discord_link, always_store
 -- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: afc_squad
 --
 
-COPY public.users (id, discord_id, username, country_timezone, is_active, created_at) FROM stdin;
-1	195599180624822272	Adinho	Netherlands	t	2025-08-04 19:07:30.307698+00
-2	1407815102454960201	xiyou	China	t	2025-08-21 12:16:21.82665+00
-3	487615845951078414	iZandex	Spain	t	2025-08-27 18:30:07.65925+00
-4	205722519208984576	ImLeamox	Germany	t	2025-08-30 11:04:53.514964+00
-5	319455756699041792	Raehl	Brazil	t	2025-09-08 12:49:56.200869+00
-6	725375834202046496	Vysa	Germany	t	2025-09-08 14:49:08.445261+00
+COPY public.users (id, discord_id, username, country_timezone, is_active, created_at, pvp_experience) FROM stdin;
+2	1407815102454960201	xiyou	China	t	2025-08-21 12:16:21.82665+00	novice
+3	487615845951078414	iZandex	Spain	t	2025-08-27 18:30:07.65925+00	novice
+4	205722519208984576	ImLeamox	Germany	t	2025-08-30 11:04:53.514964+00	novice
+5	319455756699041792	Raehl	Brazil	t	2025-09-08 12:49:56.200869+00	novice
+6	725375834202046496	Vysa	Germany	t	2025-09-08 14:49:08.445261+00	novice
+7	350825970783092766	ItachiUchiha	Brazil	t	2025-09-17 09:32:10.898589+00	novice
+8	277444924633251840	aFasiagr	Greece	t	2025-09-17 17:39:22.661753+00	novice
+1	195599180624822272	Adinho	Netherlands	t	2025-08-04 19:07:30.307698+00	Veteran
+9	358171445286928385	Ape_Gang	viena	t	2025-09-20 04:04:14.224319+00	veteran
+10	242376879791669248	starmaker	India	t	2025-09-20 17:31:55.778444+00	novice
+11	462539045361418241	EXP2ME	New Zealand	t	2025-09-26 20:44:59.821894+00	intermediate
+12	1328657649570545725	Babykarrot	Philippines	t	2025-09-26 23:58:28.610069+00	veteran
 \.
 
 
 --
--- Name: loans_id_seq; Type: SEQUENCE SET; Schema: public; Owner: afc_squad
 --
 
 SELECT pg_catalog.setval('public.loans_id_seq', 1, false);
 
 
 --
--- Name: pokemon_id_seq; Type: SEQUENCE SET; Schema: public; Owner: afc_squad
 --
 
 SELECT pg_catalog.setval('public.pokemon_id_seq', 33, true);
 
 
 --
--- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: afc_squad
 --
 
-SELECT pg_catalog.setval('public.users_id_seq', 6, true);
+SELECT pg_catalog.setval('public.users_id_seq', 12, true);
 
 
 --
--- Name: loans loans_pkey; Type: CONSTRAINT; Schema: public; Owner: afc_squad
+--
+
+ALTER TABLE ONLY public.alembic_version
+    ADD CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num);
+
+
+--
 --
 
 ALTER TABLE ONLY public.loans
@@ -251,7 +261,6 @@ ALTER TABLE ONLY public.loans
 
 
 --
--- Name: pokemon pokemon_pkey; Type: CONSTRAINT; Schema: public; Owner: afc_squad
 --
 
 ALTER TABLE ONLY public.pokemon
@@ -259,7 +268,6 @@ ALTER TABLE ONLY public.pokemon
 
 
 --
--- Name: users users_discord_id_key; Type: CONSTRAINT; Schema: public; Owner: afc_squad
 --
 
 ALTER TABLE ONLY public.users
@@ -267,7 +275,6 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: afc_squad
 --
 
 ALTER TABLE ONLY public.users
@@ -275,7 +282,6 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: loans loans_pokemon_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: afc_squad
 --
 
 ALTER TABLE ONLY public.loans
@@ -283,7 +289,6 @@ ALTER TABLE ONLY public.loans
 
 
 --
--- Name: loans loans_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: afc_squad
 --
 
 ALTER TABLE ONLY public.loans
