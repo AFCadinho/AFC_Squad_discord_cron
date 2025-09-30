@@ -21,3 +21,6 @@ alembic/versions/__pycache__/
 
 # Database backups
 discord-bot/db_backups/*.sql
+
+
+.vscode/
