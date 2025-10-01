@@ -2,7 +2,8 @@ import discord
 import os
 from discord import app_commands
 from discord.ext import commands
-from database.models import Session, Pokemon, User
+from database.models import Pokemon, User
+from database.database import Session
 
 
 CATEGORY_ID = int(os.environ.get("LENDING_CATEGORY", "123456789012345678"))  # Category for lending channels

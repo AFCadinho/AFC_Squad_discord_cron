@@ -16,6 +16,7 @@ requests = "^2.32.3"
 sqlalchemy = "^2.0.42"
 psycopg2-binary = "^2.9.10"
 alembic = "^1.16.4"
+pychallonge = "^1.11.5"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

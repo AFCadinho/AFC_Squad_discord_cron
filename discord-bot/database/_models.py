@@ -95,4 +95,4 @@ class Loan(Base):
         return f"<Loan(pokemon_id={self.pokemon_id}, user_id={self.user_id}, borrowed_at={self.borrowed_at})>"
 
 
-Base.metadata.create_all(engine)
+# Base.metadata.create_all(engine)

@@ -1,7 +1,9 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
-from database.models import Session, User
+from database.models import User
+from database.database import Session
+
 from sqlalchemy import select    
 from datetime import datetime
 

@@ -2,7 +2,8 @@ import discord
 import sqlalchemy as sa
 from discord import app_commands
 from discord.ext import commands
-from database.models import Session, Pokemon
+from database.models import Pokemon
+from database.database import Session
 
 
 class CrewPokemon(commands.Cog):
