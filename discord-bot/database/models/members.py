@@ -7,7 +7,8 @@ from database.base import Base
 
 if TYPE_CHECKING:
     from database.models.lending import Loan  # only for type hints
-    from database.models.tournament import Tournament
+    from database.models.tournament import Tournament, TournamentParticipants
+
 
 class User(Base):
     __tablename__ = "users"
@@ -23,18 +24,18 @@ class User(Base):
 
     loans: Mapped[List["Loan"]] = relationship("Loan", back_populates="user")
 
-    # Tournaments
-    tournaments: Mapped[List["Tournament"]] = relationship(
-        "Tournament",
-        secondary="tournament_participants",
-        back_populates="participants"
-    )
-
+    # Many to One
     won_tournaments: Mapped[List["Tournament"]] = relationship(
-        "Tournament",
         foreign_keys="Tournament.winner_id",
         back_populates="winner",
     )
+
+    # Many to Many
+    tournament_rows: Mapped[List["TournamentParticipants"]] = relationship(
+        back_populates="user_link",
+        cascade="all"
+    )
+
 
     def __repr__(self) -> str:
         return f"<User(discord_id={self.discord_id}, username={self.username}, country_timezone={self.country_timezone})>"

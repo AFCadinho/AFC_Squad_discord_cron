@@ -2,10 +2,12 @@
 from .members import User
 from .pokemon import Pokemon
 from .lending import Loan
-from .tournament import Tournament
+from .tournament import Tournament, TournamentParticipants, TournamentMatches
 
 __all__ = ["User", 
            "Pokemon", 
            "Loan",
-           "Tournament"
+           "Tournament",
+           "TournamentParticipants",
+           "TournamentMatches"
            ]
