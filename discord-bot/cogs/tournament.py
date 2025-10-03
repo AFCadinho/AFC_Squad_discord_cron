@@ -15,9 +15,10 @@ from database.models import Tournament, User, TournamentParticipants, Tournament
 USERNAME = os.getenv("CH_USERNAME")
 API_KEY = os.getenv("CH_API_KEY")
 
-REPORTS_CHANNEL = int(os.getenv("REPORTS_CH_ID", "0"))
-SIGN_UP_CHANNEL = int(os.getenv("SIGNUPS_CH_ID", "0"))
-VIDEO_CHANNEL = int(os.getenv("VIDEO_CH_ID", "0"))
+SIGNUPS_CH = int(os.getenv("SIGNUPS_CH_ID", 0))
+REPORTS_CH = int(os.getenv("REPORTS_CH_ID", 0))
+VIDEO_CHANNEL = int(os.getenv("VIDEO_CH_ID", 0))
+ANNOUNCEMENT_CH = int(os.getenv("ANNOUNCEMENTS_CH_ID", 0))
 
 
 def auth_tournament():
@@ -512,8 +513,8 @@ class Tournaments(commands.Cog):
 
     @app_commands.command(name="sign_up", description="Sign up for the current tournament")
     async def sign_up(self, interaction: discord.Interaction):
-        if interaction.channel_id != int(SIGN_UP_CHANNEL):
-            await interaction.response.send_message(f"You are only allowed to use this command in the <#{SIGN_UP_CHANNEL}> channel.", ephemeral=True)
+        if interaction.channel_id != int(SIGNUPS_CH):
+            await interaction.response.send_message(f"You are only allowed to use this command in the <#{SIGNUPS_CH}> channel.", ephemeral=True)
             return
         
         member = interaction.user
@@ -563,8 +564,12 @@ class Tournaments(commands.Cog):
     # Matches
     @app_commands.command(name="report_win", description="Report who won your match")
     async def report_score(self, interaction: discord.Interaction, winner: discord.Member, video_link: str):
-        if interaction.channel_id != int(REPORTS_CHANNEL):
-            await interaction.response.send_message(F"You are only allowed to use this command in the <#{REPORTS_CHANNEL}>", ephemeral=True)
+        if interaction.channel_id != int(REPORTS_CH):
+            await interaction.response.send_message(F"You are only allowed to use this command in the <#{REPORTS_CH}>", ephemeral=True)
+            return
+        
+        if not video_link:
+            await interaction.response.send_message(F"No Video link provided. Please provide a video link of the battle.", ephemeral=True)
             return
         
         slug = slugify(self.current_tournament)
