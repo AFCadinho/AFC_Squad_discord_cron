@@ -76,36 +76,41 @@ class TournamentInfo(commands.Cog):
             title="📝 Tournament Sign-Up",
             description=(
                 "Welcome to the sign-up channel!\n\n"
-                "To participate this month:\n"
+                "⚠️ **This channel is command-only.**\n"
+                "Please do not chat here — use the commands below:\n\n"
                 "• Use **`/sign_up`** to register for the tournament.\n"
                 "• If you change your mind, use **`/unregister`** to withdraw.\n\n"
                 "✅ Once the tournament starts, you’ll be entered into the bracket."
             ),
             color=discord.Color.blue()
         )
-        embed.set_footer(text="Sign up only if you’re sure you can play this month. Good luck!")
+        embed.set_footer(
+            text="Sign up only if you’re sure you can play this month. Good luck!")
         return embed
 
-    # === Helper: Reports Embed ===
     def _reports_embed(self) -> discord.Embed:
         embed = discord.Embed(
             title="🏆 Reporting Match Results",
             description=(
                 "This is where you report your completed matches.\n\n"
+                "⚠️ **This channel is command-only.**\n"
+                "Please do not chat here — only use the slash command below:\n\n"
                 "After finishing your match:\n"
                 "• The **winner** must run:\n"
                 "  **`/report_win winner: @Winner video_link: <URL>`**\n\n"
                 "⚠️ Important:\n"
-                "• You **must** include the winner’s Discord account and a valid **video link** (Streamable/YouTube/etc.).\n"
+                "• You **must** include the winner’s Discord account and a valid **video link**.\n"
                 "• Example: `/report_win winner: @Player1 video_link: https://streamable.com/abcd`\n"
                 "• ❌ Reports without video proof will be rejected and must be **redone**."
             ),
             color=discord.Color.orange()
         )
-        embed.set_footer(text="Only one report per match is needed — made by the winner.")
+        embed.set_footer(
+            text="Only one report per match is needed — made by the winner.")
         return embed
 
     # === Admin Command: Post Sign-up Embed ===
+
     @app_commands.command(name="post_signup_embed", description="Post the sign-up help embed in the sign-up channel")
     @app_commands.default_permissions(administrator=True)
     async def post_signup_embed(self, interaction: discord.Interaction):
