@@ -157,7 +157,7 @@ class Tournaments(commands.Cog):
 
     async def _log_to_logs(self, *, title: str, description: str = "", fields: dict[str, str] | None = None):
         """Send a small embed to the logs channel. Safe no-op if channel missing/inaccessible."""
-        logs_channel = 1423723506914295858
+        logs_channel = LOGS_CH
         if not logs_channel:
             return
 
@@ -556,32 +556,35 @@ class Tournaments(commands.Cog):
 
         tournament, msg = await self.__add_player_to_tournament(member, slug)
 
-        # Log it
-        await self._log_to_logs(
-            title="📝 Sign Up",
-            description=f"By: {interaction.user.mention} ({interaction.user.id})",
-            fields={
-                "Result": msg,
-                "Tournament": tournament.name if tournament else slug,
-                "Bracket": tournament.url if tournament and tournament.url else "—",
-                "Channel": f"<#{interaction.channel_id}>",
-            },
-        )
+        with Session() as session:
+            tournament = self.__check_if_tournament(session, slug)
 
-        embed = discord.Embed(
-        title="✅ Successfully Signed Up!",
-        description=msg,
-        color=discord.Color.green()
-        )
-        if tournament:
-            embed.add_field(name="Tournament", value=tournament.name, inline=True)
-            if getattr(tournament, "challonge_link", None):
-                embed.add_field(
-                    name="Bracket",
-                    value=f"[View on Challonge]({tournament.url})",
-                    inline=True
-                )
-        embed.set_footer(text="Good luck, have fun!")
+            # Log it
+            await self._log_to_logs(
+                title="📝 Sign Up",
+                description=f"By: {interaction.user.mention} ({interaction.user.id})",
+                fields={
+                    "Result": msg,
+                    "Tournament": tournament.name if tournament else slug,
+                    "Bracket": tournament.url if tournament and tournament.url else "—",
+                    "Channel": f"<#{interaction.channel_id}>",
+                },
+            )
+
+            embed = discord.Embed(
+            title="✅ Successfully Signed Up!",
+            description=msg,
+            color=discord.Color.green()
+            )
+            if tournament:
+                embed.add_field(name="Tournament", value=tournament.name, inline=True)
+                if getattr(tournament, "challonge_link", None):
+                    embed.add_field(
+                        name="Bracket",
+                        value=f"[View on Challonge]({tournament.url})",
+                        inline=True
+                    )
+            embed.set_footer(text="Good luck, have fun!")
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
