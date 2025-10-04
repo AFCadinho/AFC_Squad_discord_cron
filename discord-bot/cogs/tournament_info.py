@@ -19,32 +19,34 @@ class TournamentInfo(commands.Cog):
     @app_commands.default_permissions(administrator=True)
     async def general_tournament_info(self, interaction: discord.Interaction):
         embed = discord.Embed(
-            title="🎮 How It Works",
+            title="🎮 Tournament Info",
             description=(
-                "🗓️ **One tournament = one month**\n"
-                "📖 **4 rounds total** → 1 round every week\n"
+                "🗓️ **One tournament lasts one month**\n"
+                "📖 **4 rounds total** → 1 round per week\n"
                 "👥 **You play one opponent each week**\n\n"
-                "🚦 **Please don’t start a round on your own.**\n"
-                f"Wait for us to announce the official start of each round in <#{ANNOUNCEMENT_CH}> "
-                "before playing your match.\n\n"
-                "📌 **You and your opponent plan the match** (any time during that week, after it’s announced)\n\n"
-                f"📝 **Sign up in <#{SIGNUPS_CH}> using `/sign_up`**\n"
-                f"🏁 **Report wins in <#{REPORTS_CH}> using `/report_win`**\n"
-                " • **You must pass the winner _Discord account_ and a _video link_**\n"
-                " • Example: `/report_win winner: @Username video_link: https://...`\n"
-                " • ❌ **Reports without video proof are rejected and must be redone**\n\n"
-                "👨‍⚖️ **Moderators will update the official bracket on Challonge.**\n\n"
-                "### 🎥 How to Record & Upload\n"
+                f"🚦 **Wait for round announcements in <#{ANNOUNCEMENT_CH}> before playing.**\n\n"
+                "📌 **Plan your match with your opponent during that week**\n\n"
+                f"📝 **Sign up in <#{SIGNUPS_CH}>** with `/sign_up`\n"
+                f"🏁 **Report wins in <#{REPORTS_CH}>** with `/report_win`\n"
+                " • Provide the **winner’s Discord @** and a **video link**\n"
+                " • Example: `/report_win winner: @Username video_link: https://...`\n\n"
+                "👨‍⚖️ Moderators will review all reports and confirm results.\n\n"
+                "### 🎥 Recording & Sharing\n"
                 "- On **PC**:\n"
-                "  • Record with a screen recorder (e.g. Veed.io)\n"
-                "  • Upload to Streamable/YouTube and share the link\n\n"
-                "- On **Phone**:\n"
-                "  • Use built-in screen recording (iOS/Android)\n"
-                "  • Upload to Streamable/YouTube and share the link\n"
+                "  • Record with [Komodo](https://komododeck.com/) → works in your browser, no install, no account needed\n"
+                "  • Upload your video to [Streamable](https://streamable.com/) (no account needed) or YouTube\n"
+                "  • Share the link when reporting your win\n\n"
+                "- On **Phone** (iOS / Android):\n"
+                "  • Use your phone’s built-in screen recorder\n"
+                "  • Upload to [Streamable](https://streamable.com/) (no account needed) or YouTube\n"
+                "  • Share the link when reporting your win\n"
             ),
             color=discord.Color.green()
         )
         await interaction.response.send_message(embed=embed)
+
+
+
 
     # === Rewards Info ===
     @app_commands.command(name="tournament_rewards", description="Shows the rewards for the tournament")

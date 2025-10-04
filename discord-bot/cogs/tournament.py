@@ -4,7 +4,9 @@ import os
 import challonge
 import requests
 import sqlalchemy as sa
+import time
 
+from datetime import datetime
 from discord import app_commands
 from discord.ext import commands
 from sqlalchemy import select
@@ -20,6 +22,7 @@ REPORTS_CH = int(os.getenv("REPORTS_CH_ID", 0))
 VIDEO_CHANNEL = int(os.getenv("VIDEO_CH_ID", 0))
 ANNOUNCEMENT_CH = int(os.getenv("ANNOUNCEMENTS_CH_ID", 0))
 LOGS_CH = int(os.getenv("LOGS_CH_ID", 0))
+SCHEDULING_CH = int(os.getenv("SCHEDULING_CH_ID", 0))
 
 
 def auth_tournament():
@@ -49,7 +52,15 @@ class Tournaments(commands.Cog):
         self.current_tournament = fetch_current_tournament()
 
     # Static Methods ---------------------------------
-
+    @staticmethod
+    def build_simple_embed(title: str, description: str, color: discord.Color):
+        embed = discord.Embed(
+            title=title, 
+            description=description, 
+            color=color)
+        embed.timestamp = discord.utils.utcnow()
+        return embed
+    
     @staticmethod
     def __check_if_tournament(session, slug):
         stmt = select(Tournament).where(Tournament.slug == slug)
@@ -278,7 +289,10 @@ class Tournaments(commands.Cog):
             slug = slugify(name)
             tournament = self.__check_if_tournament(session, slug)
             if not tournament:
-                await interaction.response.send_message(f"Tournament with name '{name}' does not exist.", ephemeral=True)
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed("❌ Error", f"Tournament with name **{name}** does not exist.", discord.Color.red()),
+                    ephemeral=True
+                )
                 return
 
             stmt = select(Tournament).where(
@@ -291,14 +305,20 @@ class Tournaments(commands.Cog):
             tournament.current_tournament = True
             self.current_tournament = slug
 
-        await interaction.response.send_message(f"The current tournament is set to: {self.current_tournament}", ephemeral=True)
+        await interaction.response.send_message(
+            embed=self.build_simple_embed("✅ Current Tournament Set", f"Now managing: **{self.current_tournament}**", discord.Color.green()),
+            ephemeral=True
+        )
 
     @app_commands.command(name="get_current_tournament", description="Shows the current tournament that be bot is managing")
     @app_commands.default_permissions(administrator=True)
     async def get_current_tournament(self, interaction: discord.Interaction):
         current_tournament_slug = self.current_tournament
         if not current_tournament_slug:
-            await interaction.response.send_message(f"I am currently not managing any tournament", ephemeral=True)
+            await interaction.response.send_message(
+                embed=self.build_simple_embed("ℹ️ Info", "I am currently not managing any tournament.", discord.Color.blurple()),
+                ephemeral=True
+            )
             return
 
         session = Session()
@@ -306,11 +326,16 @@ class Tournaments(commands.Cog):
             tournament = self.__check_if_tournament(
                 session, current_tournament_slug)
             if not tournament:
-                await interaction.response.send_message(f"The tournament im managing doesn't exist: '{current_tournament_slug}'", ephemeral=True)
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed("❌ Error", f"The tournament I’m managing doesn’t exist: **{current_tournament_slug}**", discord.Color.red()),
+                    ephemeral=True
+                )
                 return
 
-            tournament_summary = str(tournament)
-            await interaction.response.send_message(tournament_summary, ephemeral=True)
+            await interaction.response.send_message(
+                embed=self.build_simple_embed("🏆 Current Tournament", str(tournament), discord.Color.green()),
+                ephemeral=True
+            )
 
     @app_commands.command(name="create_tournament", description="Create tournament of Challonge")
     @app_commands.default_permissions(administrator=True)
@@ -320,7 +345,10 @@ class Tournaments(commands.Cog):
         with Session.begin() as session:
             existing_tournament = self.__check_if_tournament(session, slug)
             if existing_tournament:
-                await interaction.response.send_message(f"Could not create tournament, because:\nTournament already exists", ephemeral=True)
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed("❌ Cannot Create", "Tournament already exists.", discord.Color.red()),
+                    ephemeral=True
+                )
                 return
 
             try:
@@ -332,7 +360,10 @@ class Tournaments(commands.Cog):
                 )
 
             except challonge.api.ChallongeException as e:
-                await interaction.response.send_message(f"Could not create tournament because:\n{e}", ephemeral=True)
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed("❌ Cannot Create", f"{e}", discord.Color.red()),
+                    ephemeral=True
+                )
                 return
 
             tournament_url = f"https://challonge.com/{slug}"
@@ -347,7 +378,10 @@ class Tournaments(commands.Cog):
             session.add(new_tournament)
             tournament_url = new_tournament.url
 
-        await interaction.response.send_message(f"Tournament: '{slug}' successfully created\nSee bracket at {tournament_url}", ephemeral=True)
+        await interaction.response.send_message(
+            embed=self.build_simple_embed("✅ Tournament Created", f"**{slug}**\nSee bracket: {tournament_url}", discord.Color.green()),
+            ephemeral=True
+        )
 
     @app_commands.command(name="delete_tournament", description="Delete an existing tournament")
     @app_commands.default_permissions(administrator=True)
@@ -356,7 +390,10 @@ class Tournaments(commands.Cog):
         with Session.begin() as session:
             tournament = self.__check_if_tournament(session, slug)
             if not tournament:
-                await interaction.response.send_message(f"Tournament '{slug}' does not exist.", ephemeral=True)
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed("❌ Error", f"Tournament **{slug}** does not exist.", discord.Color.red()),
+                    ephemeral=True
+                )
                 return
 
             remote_delete_error_msg = None
@@ -375,11 +412,14 @@ class Tournaments(commands.Cog):
             if slug == self.current_tournament:
                 self.current_tournament = None
 
-        msg = f"Tournament '{deleted_tournament_slug}' deleted"
+        msg = f"Tournament **{deleted_tournament_slug}** deleted."
         if remote_delete_error_msg:
-            msg = msg + "\nCould not delete remote. Reason: \n" + remote_delete_error_msg
+            msg = msg + "\n\n**Remote delete failed**:\n" + remote_delete_error_msg
 
-        await interaction.response.send_message(msg, ephemeral=True)
+        await interaction.response.send_message(
+            embed=self.build_simple_embed("🗑️ Delete Tournament", msg, discord.Color.orange()),
+            ephemeral=True
+        )
 
     @app_commands.command(name="start_tournament", description="Start a specific tournament")
     @app_commands.default_permissions(administrator=True)
@@ -388,20 +428,28 @@ class Tournaments(commands.Cog):
         with Session.begin() as session:
             tournament = self.__check_if_tournament(session, slug)
             if not tournament:
-                await interaction.response.send_message(f"Tournament '{name}' does not exist", ephemeral=True)
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed("❌ Error", f"Tournament **{name}** does not exist.", discord.Color.red()),
+                    ephemeral=True
+                )
                 return
 
             if tournament.ongoing:
-                await interaction.response.send_message(f"Tournament '{name}' is already ongoing", ephemeral=True)
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed("ℹ️ Info", f"Tournament **{name}** is already ongoing.", discord.Color.blurple()),
+                    ephemeral=True
+                )
                 return
 
             try:
                 challonge.participants.randomize(slug)
                 challonge.tournaments.start(slug)
             except challonge.api.ChallongeException as e:
-                await interaction.response.send_message(f"Could not start tournament. Reason: \n{e}", ephemeral=True)
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed("❌ Could Not Start", f"{e}", discord.Color.red()),
+                    ephemeral=True
+                )
                 return
-
             error_message = None
 
             try:
@@ -411,12 +459,14 @@ class Tournaments(commands.Cog):
                 error_message = str(e)
 
             tournament.ongoing = True
-            msg = f"Tournament '{name}' has now started"
+            msg = f"Tournament **{name}** has now started."
 
             if error_message:
-                msg = msg + " \n" + error_message
+                msg += "\n\n**Warning**:\n" + error_message
 
-        await interaction.response.send_message(msg, ephemeral=True)
+        await interaction.response.send_message(
+            embed=self.build_simple_embed("🚀 Tournament Started", msg, discord.Color.green()),
+            ephemeral=True)
 
     @app_commands.command(name="end_tournament", description="End a specific ongoing tournament")
     @app_commands.default_permissions(administrator=True)
@@ -426,37 +476,59 @@ class Tournaments(commands.Cog):
         try:
             challonge.tournaments.finalize(slug)
         except challonge.api.ChallongeException as e:
-            await interaction.response.send_message(f"Could not end this tournament because: \n{e}", ephemeral=True)
+            await interaction.response.send_message(
+                embed=self.build_simple_embed("❌ Could Not End", f"{e}", discord.Color.red()),
+                ephemeral=True
+            )
             return
 
         with Session.begin() as session:
 
             tournament = self.__check_if_tournament(session, slug)
             if not tournament:
-                await interaction.response.send_message(f"There is currently no tournament running.", ephemeral=True)
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed("ℹ️ Info", "There is currently no tournament running.", discord.Color.blurple()),
+                    ephemeral=True
+                )
                 return
 
             challonge_winner_id = self.get_participant_on_rank(slug, 1)
             if not challonge_winner_id:
-                await interaction.response.send_message(f"No winner available. Tournament hasn't been finalized", ephemeral=True)
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed("ℹ️ Info", "No winner available. Tournament hasn’t been finalized.", discord.Color.blurple()),
+                    ephemeral=True
+                )
                 return
-
+            
             participant_winner = self.__p_challonge_id_to_participant(
                 session, tournament.id, challonge_winner_id)
             if not participant_winner:
-                await interaction.response.send_message(f"Winner is not registered as a participant.", ephemeral=True)
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed("❌ Error", "Winner is not registered as a participant.", discord.Color.red()),
+                    ephemeral=True
+                )
                 return
 
             crew_member = self.__participant_to_member(
                 session, participant_winner.id)
             if not crew_member:
-                await interaction.response.send_message(f"winner does not exist in our database.", ephemeral=True)
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed("❌ Error", "Winner does not exist in our database.", discord.Color.red()),
+                    ephemeral=True
+                )
                 return
 
             tournament.winner_id = crew_member.id
             tournament.ongoing = False
             self.current_tournament = None
-            await interaction.response.send_message(f"Tournament '{tournament.name}' has ended. Winner: {crew_member.username}\nCheck bracket at: {tournament.url}", ephemeral=True)
+            await interaction.response.send_message(
+                embed=self.build_simple_embed(
+                    "🏁 Tournament Ended",
+                    f"**{tournament.name}**\nWinner: **{crew_member.username}**\nBracket: {tournament.url}",
+                    discord.Color.green()
+                ),
+                ephemeral=True
+            )
 
     # Auto complete handlers -----------------------------------------------
 
@@ -545,13 +617,27 @@ class Tournaments(commands.Cog):
     @app_commands.command(name="sign_up", description="Sign up for the current tournament")
     async def sign_up(self, interaction: discord.Interaction):
         if interaction.channel_id != int(SIGNUPS_CH):
-            await interaction.response.send_message(f"You are only allowed to use this command in the <#{SIGNUPS_CH}> channel.", ephemeral=True)
+            await interaction.response.send_message(
+                embed=self.build_simple_embed(
+                    "🚫 Wrong Channel",
+                    f"Use this command in <#{SIGNUPS_CH}>.",
+                    discord.Color.red(),
+                ),
+                ephemeral=True,
+            )
             return
 
         member = interaction.user
         slug = self.current_tournament
         if not slug:
-            await interaction.response.send_message(f"There is currently no tournament ongoing", ephemeral=True)
+            await interaction.response.send_message(
+                embed=self.build_simple_embed(
+                    "ℹ️ Info",
+                    "There is currently no tournament ongoing.",
+                    discord.Color.blurple(),
+                ),
+                ephemeral=True,
+            )
             return
 
         tournament, msg = await self.__add_player_to_tournament(member, slug)
@@ -572,13 +658,14 @@ class Tournaments(commands.Cog):
             )
 
             embed = discord.Embed(
-            title="✅ Successfully Signed Up!",
-            description=msg,
-            color=discord.Color.green()
+                title="✅ Successfully Signed Up!",
+                description=msg,
+                color=discord.Color.green()
             )
             if tournament:
-                embed.add_field(name="Tournament", value=tournament.name, inline=True)
-                if getattr(tournament, "challonge_link", None):
+                embed.add_field(name="Tournament",
+                                value=tournament.name, inline=True)
+                if getattr(tournament, "url", None):
                     embed.add_field(
                         name="Bracket",
                         value=f"[View on Challonge]({tournament.url})",
@@ -593,45 +680,69 @@ class Tournaments(commands.Cog):
     async def add_participant(self, interaction: discord.Interaction, member: discord.Member):
         slug = slugify(self.current_tournament)
         if not slug:
-            await interaction.response.send_message(f"There is currently no tournament ongoing", ephemeral=True)
+            await interaction.response.send_message(
+                embed=self.build_simple_embed("ℹ️ Info", "There is currently no tournament ongoing.", discord.Color.blurple()),
+                ephemeral=True
+            )
             return
 
-        msg = await self.__add_player_to_tournament(member, slug)
-        await interaction.response.send_message(msg, ephemeral=True)
+        _tournament, msg = await self.__add_player_to_tournament(member, slug)
+        await interaction.response.send_message(
+            embed=self.build_simple_embed("📝 Add Participant", f"{msg}", discord.Color.green()),
+            ephemeral=True
+        )
 
     @app_commands.command(name="unregister", description="withdraw from the current tournament")
     async def unregister(self, interaction: discord.Interaction):
         member = interaction.user
         slug = slugify(self.current_tournament)
         if not slug:
-            await interaction.response.send_message(f"There is currently no tournament ongoing", ephemeral=True)
+            await interaction.response.send_message(
+                embed=self.build_simple_embed("ℹ️ Info", "There is currently no tournament ongoing.", discord.Color.blurple()),
+                ephemeral=True
+            )
             return
 
         msg = await self.__remove_player_from_tournament(member, slug)
 
-        await interaction.response.send_message(msg, ephemeral=True)
+        await interaction.response.send_message(
+            embed=self.build_simple_embed("🗑️ Unregister", msg, discord.Color.orange()),
+            ephemeral=True
+        )
 
     @app_commands.command(name="unregister_player", description="withdraw a player from the current tournament")
     @app_commands.default_permissions(administrator=True)
     async def unregister_player(self, interaction: discord.Interaction, member: discord.Member):
         slug = slugify(self.current_tournament)
         if not slug:
-            await interaction.response.send_message(f"There is currently no tournament ongoing", ephemeral=True)
+            await interaction.response.send_message(
+                embed=self.build_simple_embed("ℹ️ Info", "There is currently no tournament ongoing.", discord.Color.blurple()),
+                ephemeral=True
+            )
             return
 
         msg = await self.__remove_player_from_tournament(member, slug)
 
-        await interaction.response.send_message(msg, ephemeral=True)
+        await interaction.response.send_message(
+            embed=self.build_simple_embed("🗑️ Unregister Player", msg, discord.Color.orange()),
+            ephemeral=True
+        )
 
     # Matches
     @app_commands.command(name="report_win", description="Report who won your match")
     async def report_score(self, interaction: discord.Interaction, winner: discord.Member, video_link: str):
         if interaction.channel_id != int(REPORTS_CH):
-            await interaction.response.send_message(F"You are only allowed to use this command in the <#{REPORTS_CH}>", ephemeral=True)
+            await interaction.response.send_message(
+                embed=self.build_simple_embed("🚫 Wrong Channel", f"Use this command in <#{REPORTS_CH}>.", discord.Color.red()),
+                ephemeral=True
+            )
             return
 
         if not video_link:
-            await interaction.response.send_message(F"No Video link provided. Please provide a video link of the battle.", ephemeral=True)
+            await interaction.response.send_message(
+                embed=self.build_simple_embed("❌ Missing Video", "Please provide a video link of the battle.", discord.Color.red()),
+                ephemeral=True
+            )
             return
 
         slug = slugify(self.current_tournament)
@@ -642,7 +753,10 @@ class Tournaments(commands.Cog):
         with Session.begin() as session:
             tournament = self.__check_if_tournament(session, slug)
             if not tournament:
-                await interaction.response.send_message("There is currently no tournament running.", ephemeral=True)
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed("ℹ️ Info", "There is currently no tournament running.", discord.Color.blurple()),
+                    ephemeral=True
+                )
                 return
 
             crew_member = self.__discord_id_to_member(
@@ -650,7 +764,10 @@ class Tournaments(commands.Cog):
             winning_crew_member = self.__discord_id_to_member(
                 session, winner_discord_id)
             if not crew_member or not winning_crew_member:
-                await interaction.response.send_message("You are not registered in our database. Please contact management", ephemeral=True)
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed("❌ Error", "You are not registered in our database. Please contact management.", discord.Color.red()),
+                    ephemeral=True
+                )
                 return
 
             participant = self.__check_if_participant(
@@ -658,16 +775,22 @@ class Tournaments(commands.Cog):
             winning_participant = self.__check_if_participant(
                 session, tournament.id, winning_crew_member.id)
             if not participant or not winning_participant:
-                await interaction.response.send_message("You are not registered for this tournament", ephemeral=True)
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed("❌ Error", "You are not registered for this tournament.", discord.Color.red()),
+                    ephemeral=True
+                )
                 return
-
+                
             next_match_ch = self.__find_current_match_player(
                 slug, participant.challonge_id)
             if not next_match_ch:
-                await interaction.response.send_message("No match could be found for this user.", ephemeral=True)
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed("❌ Error", "No match could be found for this user.", discord.Color.red()),
+                    ephemeral=True
+                )
                 return
 
-            challonge_match_id = next_match_ch["id"]  # type: ignore
+            challonge_match_id = next_match_ch["id"]  # type: ignore   
             player1_ch_id = next_match_ch["player1_id"] if next_match_ch["player1_id"] else None # type: ignore
             player2_ch_id = next_match_ch["player2_id"] if next_match_ch["player2_id"] else None # type: ignore
             round_match = next_match_ch["round"]  # type: ignore
@@ -688,13 +811,19 @@ class Tournaments(commands.Cog):
                 challonge.matches.update(
                     slug, challonge_match_id, scores_csv=score, winner_id=winning_participant.challonge_id)
             except challonge.api.ChallongeException as e:
-                await interaction.response.send_message(f"Unable to update the match. Reason: {e}", ephemeral=True)
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed("❌ Unable to Update", f"{e}", discord.Color.red()),
+                    ephemeral=True
+                )
                 return
 
             next_match_row = self.__get_match_row_by_chid(
                 session, tournament.id, challonge_match_id)
             if not next_match_row:
-                await interaction.response.send_message(f"No Match could be found.", ephemeral=True)
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed("❌ Error", "No match could be found.", discord.Color.red()),
+                    ephemeral=True
+                )
                 return
 
             next_match_row.winner_participant_id = winning_participant.id
@@ -709,12 +838,14 @@ class Tournaments(commands.Cog):
                     description=f"**{crew_member1.username}** vs **{crew_member2.username}**",
                     color=discord.Color.orange()
                 )
-                announce.add_field(name="Winner", value=winner.mention, inline=True)
+                announce.add_field(
+                    name="Winner", value=winner.mention, inline=True)
                 announce.add_field(name="VOD", value=video_link, inline=True)
-                if getattr(tournament, "challonge_link", None):
-                    announce.add_field(name="Bracket", value=f"[View on Challonge]({tournament.url})", inline=False)
+                if getattr(tournament, "url", None):
+                    announce.add_field(
+                        name="Bracket", value=f"[View on Challonge]({tournament.url})", inline=False)
                 await video_ch.send(embed=announce)
-            
+
             # Log in
             try:
                 await self._log_to_logs(
@@ -739,13 +870,15 @@ class Tournaments(commands.Cog):
                 description=f"Round **{round_match}** has been updated.",
                 color=discord.Color.green()
             )
-            confirm.add_field(name="Match", value=f"{crew_member1.username} vs {crew_member2.username}", inline=False)
+            confirm.add_field(
+                name="Match", value=f"{crew_member1.username} vs {crew_member2.username}", inline=False)
             confirm.add_field(name="Winner", value=winner.mention, inline=True)
             confirm.add_field(name="Score", value=score, inline=True)
             confirm.add_field(name="VOD", value=video_link, inline=False)
-            if getattr(tournament, "challonge_link", None):
-                confirm.add_field(name="Bracket", value=f"[View on Challonge]({tournament.url})", inline=False)
-                    
+            if getattr(tournament, "url", None):
+                confirm.add_field(
+                    name="Bracket", value=f"[View on Challonge]({tournament.url})", inline=False)
+
             await interaction.response.send_message(embed=confirm, ephemeral=True)
 
     @app_commands.command(name="update_match", description="Update the score of a match")
@@ -755,13 +888,19 @@ class Tournaments(commands.Cog):
 
         players = [player1.id, player2.id]
         if winner.id not in players:
-            await interaction.response.send_message("Winner must be one of the two players.", ephemeral=True)
+            await interaction.response.send_message(
+                embed=self.build_simple_embed("❌ Error", "Winner must be one of the two players.", discord.Color.red()),
+                ephemeral=True
+            )
             return
-
+        
         with Session.begin() as session:
             tournament = self.__check_if_tournament(session, slug)
             if not tournament:
-                await interaction.response.send_message(f"There is currently no tournament set as current tournament", ephemeral=True)
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed("ℹ️ Info", "There is currently no tournament set as current tournament.", discord.Color.blurple()),
+                    ephemeral=True
+                )
                 return
 
             crew_member1 = self.__discord_id_to_member(session, player1.id)
@@ -770,9 +909,12 @@ class Tournaments(commands.Cog):
                 session, winner.id)
 
             if not crew_member1 or not crew_member2:
-                await interaction.response.send_message(f"1 or more players do not exist in our database", ephemeral=True)
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed("❌ Error", "One or more players do not exist in our database.", discord.Color.red()),
+                    ephemeral=True
+                )
                 return
-
+            
             participant1 = self.__check_if_participant(
                 session, tournament.id, crew_member1.id)
             participant2 = self.__check_if_participant(
@@ -781,13 +923,19 @@ class Tournaments(commands.Cog):
                 session, tournament.id, winning_crew_member.id)
 
             if not participant1 or not participant2:
-                await interaction.response.send_message(f"1 or more players are not part of this Tournament", ephemeral=True)
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed("❌ Error", "One or more players are not part of this tournament.", discord.Color.red()),
+                    ephemeral=True
+                )
                 return
 
             current_match = self.__get_match_row_for_players(
                 session, tournament.id, participant1.id, participant2.id)
             if not current_match:
-                await interaction.response.send_message(f"This match between '{player1.display_name}' and '{player2.display_name}' does not exist.", ephemeral=True)
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed("❌ Error", f"This match between **{player1.display_name}** and **{player2.display_name}** does not exist.", discord.Color.red()),
+                    ephemeral=True
+                )
                 return
 
             score = "1-0" if winning_participant.id == current_match.participant1_id else "0-1"
@@ -801,25 +949,33 @@ class Tournaments(commands.Cog):
                 ok = await self.__prep_next_match_winner(session, slug, winning_participant.challonge_id)
 
             except challonge.api.ChallongeException as e:
-                await interaction.response.send_message(f"Something went wrong. Error: {e}", ephemeral=True)
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed("❌ Update Failed", f"{e}", discord.Color.red()),
+                    ephemeral=True
+                )
                 return
 
-        msg = f"Match successfully update with winner: {winner.display_name}"
+        msg = f"Match successfully updated. Winner: **{winner.display_name}**."
         if not ok:
-            msg = msg + "\n" + "ERROR! Could not find and update next match of winner."
+            msg += "\n\n⚠️ Could not find and update winner’s next match."
 
-        await interaction.response.send_message(msg, ephemeral=True)
+        await interaction.response.send_message(
+            embed=self.build_simple_embed("✅ Match Updated", msg, discord.Color.green()),
+            ephemeral=True
+        )
 
     @app_commands.command(name="sync_db_to_challonge", description="Synchronize the Database to the bracket in Challonge for current tournament")
     @app_commands.default_permissions(administrator=True)
     async def sync_db_to_challonge(self, interaction: discord.Interaction):
         slug = slugify(self.current_tournament)
-        msg = ""
 
         with Session.begin() as session:
             tournament = self.__check_if_tournament(session, slug)
             if not tournament:
-                await interaction.response.send_message(f"There is currently no tournament running", ephemeral=True)
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed("ℹ️ Info", "There is currently no tournament running.", discord.Color.blurple()),
+                    ephemeral=True
+                )
                 return
 
             try:
@@ -844,17 +1000,181 @@ class Tournaments(commands.Cog):
                     match_row.participant2_id = participant2.id if participant2 else None
                     match_row.winner_participant_id = winning_participant.id if winning_participant else None
                     match_row.score = score_challonge_match if score_challonge_match else None
+                    
                     match_row.completed = True if match["state"] == "complete" else False # type: ignore
 
-                    msg = f"Database successfully synchronized with the Challonge Tournament Bracket."
-
             except challonge.api.ChallongeException:
-                await interaction.response.send_message(f"There is currently no tournament running", ephemeral=True)
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed("ℹ️ Info", "There is currently no tournament running.", discord.Color.blurple()),
+                    ephemeral=True
+                )
                 return
 
-        msg = f"Database synchronized.\n"
+        await interaction.response.send_message(
+            embed=self.build_simple_embed("🔄 Sync Complete", "Database synchronized with Challonge.", discord.Color.green()),
+            ephemeral=True
+        )
 
-        await interaction.response.send_message(msg, ephemeral=True)
+    async def check_if_match_exists(self, slug, round, discord_id_1, discord_id_2):
+        with Session() as session:
+            tournament = self.__check_if_tournament(session, slug)
+            if not tournament:
+                return False, "No tournament running right now"
+
+            # Get Crew Members
+            crew_member1 = self.__discord_id_to_member(session, discord_id_1)
+            crew_member2 = self.__discord_id_to_member(session, discord_id_2)
+            if not crew_member1 or not crew_member2:
+                return False, "One or more players do not exist in our database."
+
+            # Get Tournament Participant
+            participant1 = self.__check_if_participant(
+                session, tournament.id, crew_member1.id)
+            participant2 = self.__check_if_participant(
+                session, tournament.id, crew_member2.id)
+            if not participant1 or not participant2:
+                return False, f"One or more players are not participating in the current tournament."
+
+            # Now get the match
+            match = self.__get_match_row_for_players(
+                session, tournament.id, participant1.id, participant2.id)
+            if not match:
+                return False, f"The match between {crew_member1.username} and {crew_member2.username}, does not exist for the current Tournament."
+
+            if match.round != round:
+                return False, f"That match exists, but it’s for round {match.round}, not round {round}."
+
+            return True, "I found your match"
+
+    async def post_schedule_embed(self, year, month, day, hour, minute, player1, player2, round, schedule_channel):
+        # Other logic
+        dt = datetime(
+            year=year,
+            month=month,
+            day=day,
+            hour=hour,
+            minute=minute
+        )
+
+        if dt < datetime.now():
+            return None
+
+        unix_ts = int(time.mktime(dt.timetuple()))
+        embed = discord.Embed(
+            title=f"📅 Match Scheduled — Round {round}",
+            description=(
+                f"{player1.mention} vs {player2.mention}\n\n"
+                f"**Match Time:** <t:{unix_ts}:F>\n"
+                f"**Relative:** <t:{unix_ts}:R>"
+            ),
+            color=discord.Color.blurple()
+        )
+
+        new_post = await schedule_channel.send(embed=embed)
+        return new_post.id
+
+    @app_commands.command(name="admin_schedule_match")
+    @app_commands.default_permissions(administrator=True)
+    async def admin_schedule_match(
+        self, 
+        interaction: discord.Interaction,
+        player1: discord.Member,
+        player2: discord.Member,
+        round: app_commands.Range[int, 1, 10],
+        year: int,
+        month: app_commands.Range[int, 1, 12],
+        day: app_commands.Range[int, 1, 31],
+        hour: app_commands.Range[int, 0, 23],
+        minute: app_commands.Range[int, 0, 59]):
+        
+        # CODE START
+        slug = slugify(self.current_tournament)
+        discord_user1 = player1
+        discord_user2 = player2
+        schedule_channel = self.bot.get_channel(int(SCHEDULING_CH))
+        if not interaction.guild:
+            return
+
+        if not slug:
+            await interaction.response.send_message(
+                embed=self.build_simple_embed("ℹ️ Info", "No tournament running right now.", discord.Color.blurple()),
+                ephemeral=True
+            )
+            return
+
+        match_exists, msg = await self.check_if_match_exists(slug, round, discord_user1.id, discord_user2.id)
+        if not match_exists:
+            await interaction.response.send_message(
+                embed=self.build_simple_embed("❌ Error", msg, discord.Color.red()),
+                ephemeral=True
+            )
+            return
+
+        # Other logic
+        new_post_id = await self.post_schedule_embed(year, month, day, hour, minute, discord_user1, discord_user2, round, schedule_channel)
+        if not new_post_id:
+            await interaction.response.send_message(
+                embed=self.build_simple_embed("❌ Error", "You cannot schedule a match in the past.", discord.Color.red()),
+                ephemeral=True
+            )
+            return 
+
+        post_url = f"https://discord.com/channels/{interaction.guild.id}/{schedule_channel.id}/{new_post_id}"
+
+        await interaction.response.send_message(
+            embed=self.build_simple_embed("✅ Match Scheduled", f"[View post here]({post_url})", discord.Color.green()),
+            ephemeral=True
+        )
+
+    
+    @app_commands.command(name="schedule_match", description="Schedule your match and post it to the scheduling channel")
+    async def schedule_match(
+        self,
+        interaction: discord.Interaction,
+        opponent: discord.Member,
+        round: app_commands.Range[int, 1, 10],
+        year: int,
+        month: app_commands.Range[int, 1, 12],
+        day: app_commands.Range[int, 1, 31],
+        hour: app_commands.Range[int, 0, 23],
+        minute: app_commands.Range[int, 0, 59]):
+
+        # CODE START
+        slug = slugify(self.current_tournament)
+        discord_user1 = interaction.user
+        discord_user2 = opponent
+        schedule_channel = self.bot.get_channel(int(SCHEDULING_CH))
+        if not interaction.guild:
+            return
+
+        if not slug:
+            await interaction.response.send_message(
+                embed=self.build_simple_embed("ℹ️ Info", "No tournament running right now.", discord.Color.blurple()),
+                ephemeral=True
+            )
+            return
+
+        match_exists, msg = await self.check_if_match_exists(slug, round, discord_user1.id, discord_user2.id)
+        if not match_exists:
+            await interaction.response.send_message(
+                embed=self.build_simple_embed("❌ Error", msg, discord.Color.red()),
+                ephemeral=True
+            )
+            return
+
+        new_post_id = await self.post_schedule_embed(year, month, day, hour, minute, discord_user1, discord_user2, round, schedule_channel)
+        if not new_post_id:
+            await interaction.response.send_message(
+                embed=self.build_simple_embed("❌ Error", "You cannot schedule a match in the past.", discord.Color.red()),
+                ephemeral=True
+            )
+            return
+
+        post_url = f"https://discord.com/channels/{interaction.guild.id}/{schedule_channel.id}/{new_post_id}"
+
+        await interaction.response.send_message(
+            embed=self.build_simple_embed("✅ Match scheduled!", f"[View post here]({post_url})", discord.Color.green()), ephemeral=True
+        )
 
 
 async def setup(bot: commands.Bot):
