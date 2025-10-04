@@ -5,6 +5,7 @@ import challonge
 import requests
 import sqlalchemy as sa
 import time
+import validators
 
 from datetime import datetime
 from discord import app_commands
@@ -16,6 +17,7 @@ from database.models import Tournament, User, TournamentParticipants, Tournament
 # Global Variable
 USERNAME = os.getenv("CH_USERNAME")
 API_KEY = os.getenv("CH_API_KEY")
+GUILD_ID = os.getenv("GUILD_ID", 0)
 
 SIGNUPS_CH = int(os.getenv("SIGNUPS_CH_ID", 0))
 REPORTS_CH = int(os.getenv("REPORTS_CH_ID", 0))
@@ -53,6 +55,12 @@ class Tournaments(commands.Cog):
 
     # Static Methods ---------------------------------
     @staticmethod
+    def __get_participant_from_id(session, participant_id):
+        stmt = select(TournamentParticipants).where(
+            TournamentParticipants.id == participant_id)
+        return session.scalars(stmt).first()
+
+    @staticmethod
     def build_simple_embed(title: str, description: str, color: discord.Color):
         embed = discord.Embed(
             title=title,
@@ -78,7 +86,7 @@ class Tournaments(commands.Cog):
         return session.scalars(stmt).first()
 
     @staticmethod
-    def __participant_to_member(session, user_id):
+    def __user_id_to_member(session, user_id):
         stmt = select(User).where(User.id == user_id)
         return session.scalars(stmt).first()
 
@@ -107,10 +115,10 @@ class Tournaments(commands.Cog):
         return session.scalars(stmt).first()
 
     @staticmethod
-    def __get_match_row_by_chid(session, tournament_id: int, match_chid: int):
+    def __get_match_row_by_chid(session, tournament_id: int, match_ch_id: int):
         stmt = select(TournamentMatches).where(
             TournamentMatches.tournament_id == tournament_id,
-            TournamentMatches.challonge_id == match_chid,
+            TournamentMatches.challonge_id == match_ch_id,
         )
         return session.scalars(stmt).first()
 
@@ -527,7 +535,7 @@ class Tournaments(commands.Cog):
                 )
                 return
 
-            crew_member = self.__participant_to_member(
+            crew_member = self.__user_id_to_member(
                 session, participant_winner.id)
             if not crew_member:
                 await interaction.response.send_message(
@@ -771,6 +779,18 @@ class Tournaments(commands.Cog):
                 ephemeral=True
             )
             return
+        
+        if not validators.url(video_link):
+            await interaction.response.send_message(
+                embed=self.build_simple_embed(
+                    "❌ Invalid Link",
+                    "Please provide a valid http/https video URL.\n"
+                    "Examples:\n• https://youtu.be/xxxx\n• https://streamable.com/xxxx\n• https://limewire.com/xxxx",
+                    discord.Color.red()
+                ),
+                ephemeral=True
+            )
+            return
 
         slug = slugify(self.current_tournament)
         reporter_discord = interaction.user
@@ -822,8 +842,8 @@ class Tournaments(commands.Cog):
                 return
 
             challonge_match_id = next_match_ch["id"]  # type: ignore
-            player1_ch_id = next_match_ch["player1_id"] if next_match_ch["player1_id"] else None #type: ignore
-            player2_ch_id = next_match_ch["player2_id"] if next_match_ch["player2_id"] else None #type: ignore
+            player1_ch_id = next_match_ch["player1_id"] if next_match_ch["player1_id"] else None # type: ignore
+            player2_ch_id = next_match_ch["player2_id"] if next_match_ch["player2_id"] else None # type: ignore
             round_match = next_match_ch["round"]  # type: ignore
 
             participant1 = self.__p_challonge_id_to_participant(
@@ -831,9 +851,9 @@ class Tournaments(commands.Cog):
             participant2 = self.__p_challonge_id_to_participant(
                 session, tournament.id, player2_ch_id)
 
-            crew_member1 = self.__participant_to_member(
+            crew_member1 = self.__user_id_to_member(
                 session, participant1.user_id)
-            crew_member2 = self.__participant_to_member(
+            crew_member2 = self.__user_id_to_member(
                 session, participant2.user_id)
 
             score = "1-0" if participant1 == winning_participant else "0-1"
@@ -863,56 +883,31 @@ class Tournaments(commands.Cog):
             next_match_row.score = score
             next_match_row.completed = True
 
-            # Embed to Video Channel
-            video_ch = self.bot.get_channel(VIDEO_CHANNEL) or await self.bot.fetch_channel(VIDEO_CHANNEL)
-            if video_ch:
-                announce = discord.Embed(
-                    title=f"🏆 Match Result Reported — Round {round_match}",
-                    description=f"**{crew_member1.username}** vs **{crew_member2.username}**",
-                    color=discord.Color.orange()
-                )
+            # Build the single embed
+            announce = discord.Embed(
+                title=f"🏆 Match Result Reported — Round {round_match}",
+                description=f"**{crew_member1.username}** vs **{crew_member2.username}**",
+                color=discord.Color.orange()
+            )
+            announce.add_field(name="Winner", value=winner.mention, inline=True)
+            announce.add_field(name="Score", value=score, inline=True)
+            announce.add_field(name="VOD", value=video_link, inline=False)
+            if getattr(tournament, "url", None):
                 announce.add_field(
-                    name="Winner", value=winner.mention, inline=True)
-                announce.add_field(name="VOD", value=video_link, inline=True)
-                if getattr(tournament, "url", None):
-                    announce.add_field(
-                        name="Bracket", value=f"[View on Challonge]({tournament.url})", inline=False)
-                await video_ch.send(embed=announce)
-
-            # Log in
-            try:
-                await self._log_to_logs(
-                    title="🏆 Report Win",
-                    description=f"By: {reporter_discord.mention} ({reporter_discord.id})",
-                    fields={
-                        "Tournament": tournament.name,
-                        "Bracket": (tournament.url or "—"),
-                        "Round": str(round_match),
-                        "Match": f"{crew_member1.username} vs {crew_member2.username}",
-                        "Winner": winner.mention,
-                        "VOD": video_link,
-                        "Channel": f"<#{interaction.channel_id}>",
-                    },
+                    name="Bracket", value=f"[View on Challonge]({tournament.url})", inline=False
                 )
+
+            # Send to logs channel
+            try:
+                log_ch = self.bot.get_channel(LOGS_CH) or await self.bot.fetch_channel(LOGS_CH)
+                if log_ch:
+                    await log_ch.send(embed=announce)
             except Exception:
                 pass
 
-            # Nice ephemeral confirmation to the reporter
-            confirm = discord.Embed(
-                title="✅ Score Submitted",
-                description=f"Round **{round_match}** has been updated.",
-                color=discord.Color.green()
-            )
-            confirm.add_field(
-                name="Match", value=f"{crew_member1.username} vs {crew_member2.username}", inline=False)
-            confirm.add_field(name="Winner", value=winner.mention, inline=True)
-            confirm.add_field(name="Score", value=score, inline=True)
-            confirm.add_field(name="VOD", value=video_link, inline=False)
-            if getattr(tournament, "url", None):
-                confirm.add_field(
-                    name="Bracket", value=f"[View on Challonge]({tournament.url})", inline=False)
+            # Ephemeral confirmation to reporter
+            await interaction.response.send_message(embed=announce, ephemeral=True)
 
-            await interaction.response.send_message(embed=confirm, ephemeral=True)
 
     @app_commands.command(name="update_match", description="Update the score of a match")
     @app_commands.default_permissions(administrator=True)
@@ -1089,7 +1084,7 @@ class Tournaments(commands.Cog):
 
             return True, "I found your match"
 
-    async def post_schedule_embed(self, year, month, day, hour, minute, player1, player2, round, schedule_channel):
+    async def post_schedule_embed(self, year, month, day, hour, minute, player1, player2, round, schedule_channel, bracket_url):
         # Other logic
         dt = datetime(
             year=year,
@@ -1109,9 +1104,13 @@ class Tournaments(commands.Cog):
                 f"{player1.mention} vs {player2.mention}\n\n"
                 f"**Match Time:** <t:{unix_ts}:F>\n"
                 f"**Relative:** <t:{unix_ts}:R>"
+                # Clickable link for bracket url
             ),
             color=discord.Color.blurple()
         )
+        if bracket_url:
+            embed.description = (embed.description or "") + \
+                f"\n\n**Bracket:** [View on Challonge]({bracket_url})"
 
         new_post = await schedule_channel.send(embed=embed)
         return new_post.id
@@ -1156,7 +1155,8 @@ class Tournaments(commands.Cog):
             return
 
         # Other logic
-        new_post_id = await self.post_schedule_embed(year, month, day, hour, minute, discord_user1, discord_user2, round, schedule_channel)
+        bracket_url = f"https://challonge.com/{slug}"
+        new_post_id = await self.post_schedule_embed(year, month, day, hour, minute, discord_user1, discord_user2, round, schedule_channel, bracket_url)
         if not new_post_id:
             await interaction.response.send_message(
                 embed=self.build_simple_embed(
@@ -1210,7 +1210,8 @@ class Tournaments(commands.Cog):
             )
             return
 
-        new_post_id = await self.post_schedule_embed(year, month, day, hour, minute, discord_user1, discord_user2, round, schedule_channel)
+        bracket_url = f"https://challonge.com/{slug}"
+        new_post_id = await self.post_schedule_embed(year, month, day, hour, minute, discord_user1, discord_user2, round, schedule_channel, bracket_url)
         if not new_post_id:
             await interaction.response.send_message(
                 embed=self.build_simple_embed(
@@ -1224,6 +1225,115 @@ class Tournaments(commands.Cog):
         await interaction.response.send_message(
             embed=self.build_simple_embed("✅ Match scheduled!", f"[View post here]({post_url})", discord.Color.green()), ephemeral=True
         )
+
+    @app_commands.command(name="find_current_match", description="Find the details of your current tournament match")
+    async def find_current_match(self, interaction: discord.Interaction):
+        if interaction.guild_id != int(GUILD_ID):
+            await interaction.response.send_message("You cannot use this command from this server/chat")
+            return
+
+        slug = slugify(self.current_tournament)
+        discord_user = interaction.user
+
+        if not slug:
+            await interaction.response.send_message(
+                embed=self.build_simple_embed(
+                    "ℹ️ Info", "No tournament running right now.", discord.Color.blurple()),
+                ephemeral=True
+            )
+            return
+
+        # Discord_id -> Participant_id
+        with Session() as session:
+            tournament = self.__check_if_tournament(session, slug)
+            if not tournament:
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed(
+                        "ℹ️ Info", "There is currently no tournament running.", discord.Color.blurple()),
+                    ephemeral=True
+                )
+                return
+
+            crew_member = self.__discord_id_to_member(session, discord_user.id)
+            if not crew_member:
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed(
+                        "❌ Error", "You are not registered in our database. Please contact management.", discord.Color.red()),
+                    ephemeral=True
+                )
+                return
+
+            tournament_participant = self.__check_if_participant(
+                session, tournament.id, crew_member.id)
+            tournament_match_chall = self.__find_next_match_player(
+                slug, tournament_participant.challonge_id)
+            if not tournament_match_chall:
+                # No match for player
+                return
+
+            match_id_challonge = tournament_match_chall["id"] if tournament_match_chall else None # type: ignore
+            if not match_id_challonge:
+                # no challonge id for match
+                return
+
+            db_match_row = self.__get_match_row_by_chid(
+                session, tournament.id, match_id_challonge)
+            if not db_match_row:
+                # no record in db of that match
+                return
+
+            crew_member1 = None
+            crew_member2 = None
+
+            player1_id = db_match_row.participant1_id
+            player1 = self.__get_participant_from_id(session, player1_id)
+            if not player1:
+                # No player 1 in that match
+                player1 = None
+            else:
+                crew_member1 = self.__user_id_to_member(
+                    session, player1.user_id)
+
+            player2_id = db_match_row.participant2_id
+            player2 = self.__get_participant_from_id(session, player2_id)
+            if not player2:
+                # No player 2 in that match
+                player2 = None
+            else:
+                crew_member2 = self.__user_id_to_member(
+                    session, player2.user_id)
+
+            username_player1 = crew_member1.username if crew_member1 else None
+            username_player2 = crew_member2.username if crew_member2 else None
+
+            match_round = db_match_row.round
+            opponent_username = username_player1 if username_player1 != crew_member.username else username_player2
+
+            desc_lines = []
+            if match_round is not None:
+                desc_lines.append(f"**Round:** {match_round}")
+
+            desc_lines.append(f"**Opponent:** {opponent_username}")
+
+            # Build description text
+            description = "\n".join(desc_lines)
+
+            # Append bracket if available (clean clickable link)
+            if getattr(tournament, "url", None):
+                description += f"\n\n**Bracket:** [View on Challonge]({tournament.url})"
+
+            # Scheduling tip if opponent is valid
+            if opponent_username:
+                description += "\n\n💡 Use `/schedule_match` to post your match time in the scheduling channel."
+
+            embed = discord.Embed(
+                title="🎯 Your Current Match",
+                description=description,
+                color=discord.Color.blurple()
+            )
+            embed.timestamp = discord.utils.utcnow()
+
+            await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 async def setup(bot: commands.Bot):

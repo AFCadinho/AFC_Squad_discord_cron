@@ -5,8 +5,9 @@ import asyncio
 
 SIGNUPS_CH = int(os.getenv("SIGNUPS_CH_ID", 0))
 REPORTS_CH = int(os.getenv("REPORTS_CH_ID", 0))
+SCHEDULING_CH = int(os.getenv("SCHEDULING_CH_ID", 0))
 
-CHANNELS_TO_AUTOCLEAN = {ch for ch in [SIGNUPS_CH, REPORTS_CH] if ch}
+CHANNELS_TO_AUTOCLEAN = {ch for ch in [SIGNUPS_CH, REPORTS_CH, SCHEDULING_CH] if ch}
 
 
 class AutoClean(commands.Cog):

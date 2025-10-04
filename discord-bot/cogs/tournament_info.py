@@ -8,6 +8,8 @@ SIGNUPS_CH = int(os.getenv("SIGNUPS_CH_ID", 0))
 REPORTS_CH = int(os.getenv("REPORTS_CH_ID", 0))
 VIDEO_CHANNEL = int(os.getenv("VIDEO_CH_ID", 0))
 ANNOUNCEMENT_CH = int(os.getenv("ANNOUNCEMENTS_CH_ID", 0))
+RULES_CH = int(os.getenv("RULES_CH_ID", 0))
+SCHEDULING_CH = int(os.getenv("SCHEDULING_CH_ID", 0))
 
 
 class TournamentInfo(commands.Cog):
@@ -19,36 +21,97 @@ class TournamentInfo(commands.Cog):
     @app_commands.default_permissions(administrator=True)
     async def general_tournament_info(self, interaction: discord.Interaction):
         embed = discord.Embed(
-            title="🎮 Tournament Info",
+            title="🎮 How It Works",
             description=(
-                "🗓️ **One tournament lasts one month**\n"
-                "📖 **4 rounds total** → 1 round per week\n"
-                "👥 **You play one opponent each week**\n\n"
-                f"🚦 **Wait for round announcements in <#{ANNOUNCEMENT_CH}> before playing.**\n\n"
-                "📌 **Plan your match with your opponent during that week**\n\n"
-                f"📝 **Sign up in <#{SIGNUPS_CH}>** with `/sign_up`\n"
-                f"🏁 **Report wins in <#{REPORTS_CH}>** with `/report_win`\n"
-                " • Provide the **winner’s Discord @** and a **video link**\n"
-                " • Example: `/report_win winner: @Username video_link: https://...`\n\n"
-                "👨‍⚖️ Moderators will review all reports and confirm results.\n\n"
-                "### 🎥 Recording & Sharing\n"
-                "- On **PC**:\n"
-                "  • Record with [Komodo](https://komododeck.com/) → works in your browser, no install, no account needed\n"
-                "  • Upload your video to [Streamable](https://streamable.com/) (no account needed) or YouTube\n"
-                "  • Share the link when reporting your win\n\n"
-                "- On **Phone** (iOS / Android):\n"
-                "  • Use your phone’s built-in screen recorder\n"
-                "  • Upload to [Streamable](https://streamable.com/) (no account needed) or YouTube\n"
-                "  • Share the link when reporting your win\n"
+                "📝 **Sign-Ups**\n"
+                f"• Sign up in <#{SIGNUPS_CH}> with `/sign_up`\n"
+                "• Leave with `/unregister`\n\n"
+
+                "⏳ **Rounds**\n"
+                "• All tournaments are **Single Elimination**\n"
+                "• Wait for the round announcement before playing your match\n\n"
+
+                "📅 **Scheduling Matches**\n"
+                "• After the round is announced, talk with your opponent and agree on a date and time\n"
+                "• One of you uses `/schedule_match` to set it\n"
+                "• You can play earlier, but never later than the schedule\n"
+                "• Matches must be scheduled before **Wednesday (PBO in-game time)**\n\n"
+
+                "🏁 **Report Matches**\n"
+                f"• Winners report in <#{REPORTS_CH}> with `/report_win`\n"
+                "• Write the winner’s @ and add a **video link**\n"
+                "• Example: `/report_win winner:@Username video_link:https://...`\n\n"
+
+                "🎥 **Video Proof**\n"
+                "- You must record every match\n"
+                "- Upload your battle and send a link where it can be watched (YouTube, LimeWire, etc.)\n"
+                "- 🔒 Only **@afc_adinho** will see your videos. Nobody else\n\n"
+                "📖 Recording Guide: [Click Here](https://discord.com/channels/1302588750630621184/1423922709108363285/1423935057382604883)\n"
+                "📤 Upload Guide: [Click Here](https://discord.com/channels/1302588750630621184/1423922709108363285/1423944853762605086)\n\n"
+
+                "⚖️ **Fair Play**\n"
+                "• Be respectful\n"
+                f"• Follow the rules in <#{RULES_CH}>"
             ),
             color=discord.Color.green()
         )
         await interaction.response.send_message(embed=embed)
 
+    @app_commands.command(name="tournament_rules", description="Shows the official tournament rules")
+    @app_commands.default_permissions(administrator=True)
+    async def tournament_rules(self, interaction: discord.Interaction):
+        embed = discord.Embed(
+            title="📜 Tournament Rules",
+            description=(
+                "⚖️ **General Conduct**\n"
+                "• Be respectful — we are all friends here\n"
+                "• No need to get angry if someone gets lucky\n\n"
 
+                "📅 **Scheduling**\n"
+                "• Matches must be scheduled before **Wednesday (PBO in-game time)**\n"
+                "• If you do not schedule, staff will set a random time for you\n"
+                "• If your opponent does not respond to scheduling, tell us by Wednesday. "
+                "We will try to contact them. If they still do not answer, they are disqualified\n\n"
+
+                "⏰ **Match Times**\n"
+                "• If your opponent does not show up at the scheduled time, contact staff\n"
+                "• We allow 15 minutes late. After that, they are disqualified\n"
+                "• If both players do not show up, the winner will be decided by a coin flip\n\n"
+
+                "🔌 **Disconnects**\n"
+                "• In PBO, if you disconnect, the game closes and you lose instantly\n"
+                "• Because of this, a disconnect always counts as a loss\n"
+                "• Video proof is required to confirm who disconnected\n\n"
+
+                "📊 **Reporting Results**\n"
+                "• Winners must report the match result in the report channel\n"
+                "• 🚨 Reporting a false score (claiming a win when you did not win) means instant disqualification\n\n"
+
+                "⏳ **Rounds**\n"
+                "• All tournaments are **Single Elimination**\n"
+                "• Wait for the round announcement before playing your match\n\n"
+
+                "⛔ **Pokémon Bans**\n"
+                "• We follow the in-game Pokémon bans per tier\n"
+                "• To see the list: open the **Ranked Ladder** (icon at the top left, next to the Pokédex)\n"
+                "• In the Ranked Ladder window, click the **Bans** button (bottom right of the row)\n"
+                "• Select **OverUsed (OU)** or **UnderUsed (UU)** to see the banned Pokémon list\n"
+                "• Pokémon in these lists are not allowed in that tier\n\n"
+
+                "📝 **Final Notes**\n"
+                "• These rules cover the main cases, but they are not limited to this list\n"
+                "• Rules may be updated or changed if needed during the tournament\n"
+                "• Staff decisions are final\n\n"
+
+                "🏆 These rules make sure the tournament is fair and smooth for everyone!"
+            ),
+            color=discord.Color.red()
+        )
+        await interaction.response.send_message(embed=embed)
 
 
     # === Rewards Info ===
+
     @app_commands.command(name="tournament_rewards", description="Shows the rewards for the tournament")
     @app_commands.default_permissions(administrator=True)
     async def tournament_rewards(self, interaction: discord.Interaction):
@@ -137,6 +200,38 @@ class TournamentInfo(commands.Cog):
             await interaction.response.send_message("Reports embed posted.", ephemeral=True)
         else:
             await interaction.response.send_message("Couldn’t find the reports channel.", ephemeral=True)
+
+    def _scheduling_reminder_embed(self) -> discord.Embed:
+        embed = discord.Embed(
+            title="📅 Scheduling Your Match",
+            description=(
+                "⚠️ **This channel is command-only.**\n"
+                "Only use the slash command below after you and your opponent agreed on a time.\n\n"
+                "• One of the players runs:\n"
+                "`/schedule_match opponent:@Opponent round:<#> year:YYYY month:MM day:DD hour:HH minute:MM`\n\n"
+                "📌 Example:\n"
+                "`/schedule_match opponent:@Player2 round:1 year:2025 month:10 day:5 hour:19 minute:00`\n\n"
+                "✅ Matches must be scheduled **before Wednesday (PBO in-game time)**\n"
+                "✅ You may play earlier than the scheduled time, but not later."
+            ),
+            color=discord.Color.blue()
+        )
+        embed.set_footer(text="Only one schedule per match is needed.")
+        return embed
+    
+    @app_commands.command(name="post_scheduling_embed", description="Post the scheduling help embed in the scheduling channel")
+    @app_commands.default_permissions(administrator=True)
+    async def post_scheduling_embed(self, interaction: discord.Interaction):
+        ch = self.bot.get_channel(SCHEDULING_CH)
+        if ch is None:
+            ch = await self.bot.fetch_channel(SCHEDULING_CH)
+        if ch:
+            await ch.send(embed=self._scheduling_reminder_embed())
+            await interaction.response.send_message("Scheduling embed posted.", ephemeral=True)
+        else:
+            await interaction.response.send_message("Couldn’t find the scheduling channel.", ephemeral=True)
+
+
 
 
 async def setup(bot: commands.Bot):
