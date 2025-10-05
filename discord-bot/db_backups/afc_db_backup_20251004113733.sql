@@ -101,6 +101,107 @@ ALTER SEQUENCE public.pokemon_id_seq OWNED BY public.pokemon.id;
 --
 --
 
+CREATE TABLE public.tournament_matches (
+    id integer NOT NULL,
+    tournament_id integer NOT NULL,
+    participant1_id integer,
+    participant2_id integer,
+    challonge_id integer NOT NULL,
+    round integer NOT NULL,
+    completed boolean DEFAULT false NOT NULL,
+    winner_participant_id integer,
+    score text
+);
+
+
+
+--
+--
+
+CREATE SEQUENCE public.tournament_matches_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+
+--
+--
+
+ALTER SEQUENCE public.tournament_matches_id_seq OWNED BY public.tournament_matches.id;
+
+
+--
+--
+
+CREATE TABLE public.tournament_participants (
+    tournament_id integer NOT NULL,
+    user_id integer NOT NULL,
+    challonge_id integer,
+    id integer NOT NULL
+);
+
+
+
+--
+--
+
+CREATE SEQUENCE public.tournament_participants_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+
+--
+--
+
+ALTER SEQUENCE public.tournament_participants_id_seq OWNED BY public.tournament_participants.id;
+
+
+--
+--
+
+CREATE TABLE public.tournaments (
+    id integer NOT NULL,
+    challonge_id integer NOT NULL,
+    name text NOT NULL,
+    slug text NOT NULL,
+    url text NOT NULL,
+    ongoing boolean DEFAULT false NOT NULL,
+    winner_id integer,
+    current_tournament boolean DEFAULT false NOT NULL
+);
+
+
+
+--
+--
+
+CREATE SEQUENCE public.tournaments_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+
+--
+--
+
+ALTER SEQUENCE public.tournaments_id_seq OWNED BY public.tournaments.id;
+
+
+--
+--
+
 CREATE TABLE public.users (
     id integer NOT NULL,
     discord_id bigint NOT NULL,
@@ -108,7 +209,7 @@ CREATE TABLE public.users (
     country_timezone character varying(64),
     is_active boolean DEFAULT true NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    pvp_experience character varying(16) DEFAULT 'novice'::character varying NOT NULL
+    pvp_experience text DEFAULT 'novice'::character varying NOT NULL
 );
 
 
@@ -147,6 +248,24 @@ ALTER TABLE ONLY public.pokemon ALTER COLUMN id SET DEFAULT nextval('public.poke
 --
 --
 
+ALTER TABLE ONLY public.tournament_matches ALTER COLUMN id SET DEFAULT nextval('public.tournament_matches_id_seq'::regclass);
+
+
+--
+--
+
+ALTER TABLE ONLY public.tournament_participants ALTER COLUMN id SET DEFAULT nextval('public.tournament_participants_id_seq'::regclass);
+
+
+--
+--
+
+ALTER TABLE ONLY public.tournaments ALTER COLUMN id SET DEFAULT nextval('public.tournaments_id_seq'::regclass);
+
+
+--
+--
+
 ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
 
 
@@ -155,7 +274,7 @@ ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-b99403bebda0
+1c9346b310ec
 \.
 
 
@@ -209,6 +328,42 @@ COPY public.pokemon (id, name, ability, nature, tier, discord_link, always_store
 
 
 --
+-- Data for Name: tournament_matches; Type: TABLE DATA; Schema: public; Owner: afc_squad
+--
+
+COPY public.tournament_matches (id, tournament_id, participant1_id, participant2_id, challonge_id, round, completed, winner_participant_id, score) FROM stdin;
+\.
+
+
+--
+-- Data for Name: tournament_participants; Type: TABLE DATA; Schema: public; Owner: afc_squad
+--
+
+COPY public.tournament_participants (tournament_id, user_id, challonge_id, id) FROM stdin;
+1	13	274469005	2
+1	15	274473650	3
+1	16	274506816	4
+1	17	274507297	5
+1	18	274507866	6
+1	19	274511293	7
+1	20	274514532	8
+1	1	274518086	10
+1	10	274557766	12
+1	11	274564080	13
+1	21	274574459	14
+\.
+
+
+--
+-- Data for Name: tournaments; Type: TABLE DATA; Schema: public; Owner: afc_squad
+--
+
+COPY public.tournaments (id, challonge_id, name, slug, url, ongoing, winner_id, current_tournament) FROM stdin;
+1	16903851	AFC Blaze Cup	afc_blaze_cup	https://challonge.com/afc_blaze_cup	f	\N	t
+\.
+
+
+--
 -- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: afc_squad
 --
 
@@ -225,6 +380,15 @@ COPY public.users (id, discord_id, username, country_timezone, is_active, create
 10	242376879791669248	starmaker	India	t	2025-09-20 17:31:55.778444+00	novice
 11	462539045361418241	EXP2ME	New Zealand	t	2025-09-26 20:44:59.821894+00	intermediate
 12	1328657649570545725	Babykarrot	Philippines	t	2025-09-26 23:58:28.610069+00	veteran
+13	1402024910309818422	Killernacho	Netherlands	t	2025-10-03 08:41:30.513456+00	intermediate
+14	212600510920785920	Jazukia	Netherlands	t	2025-10-03 09:01:42.494631+00	novice
+15	204972425186770944	RSequeira10	portugal	t	2025-10-03 10:03:47.787368+00	veteran
+16	853400980900151327	BeazyTV	United States	t	2025-10-03 16:45:03.543209+00	intermediate
+17	225252203592417281	Reilith	Portugal	t	2025-10-03 16:54:33.656639+00	intermediate
+18	310485123156148225	Florian1	Austria	t	2025-10-03 17:01:17.854048+00	veteran
+19	920778639363166228	Alucir	Brazil	t	2025-10-03 17:47:37.558282+00	novice
+20	468936156642410496	Igfer	Pery	t	2025-10-03 18:15:37.958969+00	intermediate
+21	376079758498463754	pawol	Poland	t	2025-05-07 00:00:00+00	veteran
 \.
 
 
@@ -243,7 +407,25 @@ SELECT pg_catalog.setval('public.pokemon_id_seq', 33, true);
 --
 --
 
-SELECT pg_catalog.setval('public.users_id_seq', 12, true);
+SELECT pg_catalog.setval('public.tournament_matches_id_seq', 1, false);
+
+
+--
+--
+
+SELECT pg_catalog.setval('public.tournament_participants_id_seq', 14, true);
+
+
+--
+--
+
+SELECT pg_catalog.setval('public.tournaments_id_seq', 1, true);
+
+
+--
+--
+
+SELECT pg_catalog.setval('public.users_id_seq', 21, true);
 
 
 --
@@ -263,8 +445,50 @@ ALTER TABLE ONLY public.loans
 --
 --
 
+ALTER TABLE ONLY public.tournament_participants
+    ADD CONSTRAINT pk_tournament_participants PRIMARY KEY (id);
+
+
+--
+--
+
 ALTER TABLE ONLY public.pokemon
     ADD CONSTRAINT pokemon_pkey PRIMARY KEY (id);
+
+
+--
+--
+
+ALTER TABLE ONLY public.tournament_matches
+    ADD CONSTRAINT tournament_matches_pkey PRIMARY KEY (id);
+
+
+--
+--
+
+ALTER TABLE ONLY public.tournaments
+    ADD CONSTRAINT tournaments_pkey PRIMARY KEY (id);
+
+
+--
+--
+
+ALTER TABLE ONLY public.tournament_matches
+    ADD CONSTRAINT uq_tm_t_chid UNIQUE (tournament_id, challonge_id);
+
+
+--
+--
+
+ALTER TABLE ONLY public.tournament_participants
+    ADD CONSTRAINT uq_tp_tournament_chid UNIQUE (tournament_id, challonge_id);
+
+
+--
+--
+
+ALTER TABLE ONLY public.tournament_participants
+    ADD CONSTRAINT uq_tp_tournament_user UNIQUE (tournament_id, user_id);
 
 
 --
@@ -293,6 +517,55 @@ ALTER TABLE ONLY public.loans
 
 ALTER TABLE ONLY public.loans
     ADD CONSTRAINT loans_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+--
+
+ALTER TABLE ONLY public.tournament_matches
+    ADD CONSTRAINT tournament_matches_participant1_id_fkey FOREIGN KEY (participant1_id) REFERENCES public.tournament_participants(id) ON DELETE SET NULL;
+
+
+--
+--
+
+ALTER TABLE ONLY public.tournament_matches
+    ADD CONSTRAINT tournament_matches_participant2_id_fkey FOREIGN KEY (participant2_id) REFERENCES public.tournament_participants(id) ON DELETE SET NULL;
+
+
+--
+--
+
+ALTER TABLE ONLY public.tournament_matches
+    ADD CONSTRAINT tournament_matches_tournament_id_fkey FOREIGN KEY (tournament_id) REFERENCES public.tournaments(id) ON DELETE CASCADE;
+
+
+--
+--
+
+ALTER TABLE ONLY public.tournament_matches
+    ADD CONSTRAINT tournament_matches_winner_participant_id_fkey FOREIGN KEY (winner_participant_id) REFERENCES public.tournament_participants(id) ON DELETE SET NULL;
+
+
+--
+--
+
+ALTER TABLE ONLY public.tournament_participants
+    ADD CONSTRAINT tournament_participants_tournament_id_fkey FOREIGN KEY (tournament_id) REFERENCES public.tournaments(id) ON DELETE CASCADE;
+
+
+--
+--
+
+ALTER TABLE ONLY public.tournament_participants
+    ADD CONSTRAINT tournament_participants_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+--
+
+ALTER TABLE ONLY public.tournaments
+    ADD CONSTRAINT tournaments_winner_id_fkey FOREIGN KEY (winner_id) REFERENCES public.users(id);
 
 
 --

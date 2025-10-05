@@ -1,3 +1,5 @@
+name: dockr_discord_bot
+
 services:
   discordbot:
     build: ./discord-bot
