@@ -52,6 +52,21 @@ class TournamentMatches(Base):
         foreign_keys=[winner_participant_id]
     )
 
+    def __repr__(self) -> str:
+        return (
+            "<TournamentMatch("
+            f"id={self.id}, "
+            f"tournament_id={self.tournament_id}, "
+            f"round={self.round}, "
+            f"challonge_id={self.challonge_id}, "
+            f"participant1_id={self.participant1_id}, "
+            f"participant2_id={self.participant2_id}, "
+            f"winner_participant_id={self.winner_participant_id}, "
+            f"completed={self.completed}, "
+            f"score={repr(self.score)}"
+            ")>"
+        )
+
 
 class TournamentParticipants(Base):
     __tablename__ = "tournament_participants"
@@ -88,6 +103,16 @@ class TournamentParticipants(Base):
         foreign_keys="TournamentMatches.participant2_id",
         back_populates="participant2_link",
     )
+
+    def __repr__(self) -> str:
+        return (
+            "<TournamentParticipant("
+            f"id={self.id}, "
+            f"tournament_id={self.tournament_id}, "
+            f"user_id={self.user_id}, "
+            f"challonge_id={self.challonge_id}"
+            ")>"
+        )
 
 
 class Tournament(Base):

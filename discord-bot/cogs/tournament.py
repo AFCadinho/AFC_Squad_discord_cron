@@ -1245,6 +1245,15 @@ class Tournaments(commands.Cog):
 
         # Discord_id -> Participant_id
         with Session() as session:
+            crew_member = self.__discord_id_to_member(session, discord_user.id)
+            if not crew_member:
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed(
+                        "❌ Error", "You are not registered in our database. Please contact management.", discord.Color.red()),
+                    ephemeral=True
+                )
+                return
+            
             tournament = self.__check_if_tournament(session, slug)
             if not tournament:
                 await interaction.response.send_message(
@@ -1253,12 +1262,11 @@ class Tournaments(commands.Cog):
                     ephemeral=True
                 )
                 return
-
-            crew_member = self.__discord_id_to_member(session, discord_user.id)
-            if not crew_member:
+            
+            if not tournament.ongoing:
                 await interaction.response.send_message(
                     embed=self.build_simple_embed(
-                        "❌ Error", "You are not registered in our database. Please contact management.", discord.Color.red()),
+                        "ℹ️ Info", f"The current tournament hasn't started yet.\nCurrent tournament: {tournament.name}", discord.Color.red()),
                     ephemeral=True
                 )
                 return
@@ -1269,17 +1277,32 @@ class Tournaments(commands.Cog):
                 slug, tournament_participant.challonge_id)
             if not tournament_match_chall:
                 # No match for player
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed(
+                        "ℹ️ Info", f"No match found on challonge for {crew_member.id}", discord.Color.red()),
+                    ephemeral=True
+                )
                 return
 
             match_id_challonge = tournament_match_chall["id"] if tournament_match_chall else None # type: ignore
             if not match_id_challonge:
                 # no challonge id for match
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed(
+                        "❌ Error", "No ID found for this match on Challonge", discord.Color.red()),
+                    ephemeral=True
+                )
                 return
 
             db_match_row = self.__get_match_row_by_chid(
                 session, tournament.id, match_id_challonge)
             if not db_match_row:
                 # no record in db of that match
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed(
+                        "❌ Error", "No record of this challonge match in our database.", discord.Color.red()),
+                    ephemeral=True
+                )
                 return
 
             crew_member1 = None
@@ -1308,7 +1331,7 @@ class Tournaments(commands.Cog):
 
             match_round = db_match_row.round
             opponent_username = username_player1 if username_player1 != crew_member.username else username_player2
-
+            
             desc_lines = []
             if match_round is not None:
                 desc_lines.append(f"**Round:** {match_round}")
