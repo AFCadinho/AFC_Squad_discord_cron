@@ -1270,9 +1270,17 @@ class Tournaments(commands.Cog):
                     ephemeral=True
                 )
                 return
-
+            
             tournament_participant = self.__check_if_participant(
                 session, tournament.id, crew_member.id)
+            if not tournament_participant:
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed(
+                        "ℹ️ Info", f"You can't use this commands\nReason: You are not registered for tournament {tournament.name}", discord.Color.blurple()),
+                    ephemeral=True
+                )
+                return
+
             tournament_match_chall = self.__find_next_match_player(
                 slug, tournament_participant.challonge_id)
             if not tournament_match_chall:
