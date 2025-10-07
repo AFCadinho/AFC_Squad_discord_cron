@@ -114,7 +114,7 @@ class TournamentInfo(commands.Cog):
 
     @app_commands.command(name="tournament_rewards", description="Shows the rewards for the tournament")
     @app_commands.default_permissions(administrator=True)
-    async def tournament_rewards(self, interaction: discord.Interaction):
+    async def base_tournament_rewards(self, interaction: discord.Interaction):
         embed = discord.Embed(
             title="🎁 Rewards",
             description=(
@@ -134,6 +134,42 @@ class TournamentInfo(commands.Cog):
             color=discord.Color.gold()
         )
         await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name="booster_tournament_rewards", description="Shows the increased rewards for the tournament")
+    @app_commands.default_permissions(administrator=True)
+    async def booster_tournament_rewards(self, interaction: discord.Interaction):
+        embed = discord.Embed(
+            title="🎁 Tournament Rewards",
+            description=(
+                "🥇 **1st Place**\n"
+                "• 👑 Special Discord role: **Champion** *(prestige, shown at the top until next tournament)*\n"
+                "• 💎 750 Gems\n"
+                "• 💰 600,000 Pokédollars\n\n"
+
+                "🥈 **2nd Place**\n"
+                "• 💎 450 Gems\n"
+                "• 💰 350,000 Pokédollars\n\n"
+
+                "🥉 **3rd Place**\n"
+                "• 💎 200 Gems\n"
+                "• 💰 175,000 Pokédollars\n\n"
+
+                "🏅 **4th – 8th Place**\n"
+                "• 💰 25,000 Pokédollars\n"
+                "• 🧠 Crew Shop **TM of Choice**\n\n"
+
+                "🎖️ **9th – 16th Place**\n"
+                "• 💰 12,500 Pokédollars\n"
+                "• 🧠 Crew Shop **TM of Choice**\n\n"
+
+                "⚖️ Only **Rank 1** receives the Champion role.\n"
+                "Rewards may be adjusted in future tournaments."
+            ),
+            color=discord.Color.gold()
+        )
+
+        await interaction.response.send_message(embed=embed)
+
 
     # === Helper: Sign-up Embed ===
     def _signup_embed(self) -> discord.Embed:
