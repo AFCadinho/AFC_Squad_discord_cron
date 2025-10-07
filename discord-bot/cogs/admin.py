@@ -35,7 +35,7 @@ class Admin(commands.Cog):
             new_user = User(
                 discord_id=member.id,
                 username=ign,
-                country_timezone=country,
+                country=country,
                 pvp_experience=pvp_experience.value
             )
             session.add(new_user)
@@ -76,7 +76,7 @@ class Admin(commands.Cog):
                 case "username":
                     existing_user.username = new_value
                 case "country":
-                    existing_user.country_timezone = new_value
+                    existing_user.country = new_value
                 case "created_at":
                     try:
                         new_date = datetime.strptime(new_value, "%d-%m-%Y")
@@ -145,7 +145,7 @@ class Admin(commands.Cog):
         embed.add_field(name="PvP Experience",
                         value=row.pvp_experience.title(), inline=True)
         embed.add_field(name="Country / Timezone",
-                        value=(row.country_timezone or "—"), inline=True)
+                        value=(row.country or "—"), inline=True)
         embed.add_field(name="Join Date", value=str(
             row.created_at.strftime("%d-%m-%Y")), inline=True)
 

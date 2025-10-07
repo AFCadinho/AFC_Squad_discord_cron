@@ -16,11 +16,12 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     discord_id: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, unique=True)
     username: Mapped[str] = mapped_column(sa.String(64), nullable=False)
-    country_timezone: Mapped[Optional[str]] = mapped_column(sa.String(64))
+    country: Mapped[Optional[str]] = mapped_column(sa.String(64), nullable=True)
     is_active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true())
     created_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False)
 
     pvp_experience: Mapped[str] = mapped_column(sa.Text, nullable=False, server_default="novice")
+    timezone_name: Mapped[str] = mapped_column(sa.Text, nullable=True)
 
     loans: Mapped[List["Loan"]] = relationship("Loan", back_populates="user")
 
@@ -38,4 +39,4 @@ class User(Base):
 
 
     def __repr__(self) -> str:
-        return f"<User(discord_id={self.discord_id}, username={self.username}, country_timezone={self.country_timezone})>"
+        return f"<User(discord_id={self.discord_id}, username={self.username}, country_timezone={self.country})>"

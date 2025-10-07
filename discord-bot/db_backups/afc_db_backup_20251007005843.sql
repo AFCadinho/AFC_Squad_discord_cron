@@ -16,6 +16,19 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+--
+--
+
+-- *not* creating schema, since initdb creates it
+
+
+
+--
+--
+
+COMMENT ON SCHEMA public IS '';
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -332,6 +345,22 @@ COPY public.pokemon (id, name, ability, nature, tier, discord_link, always_store
 --
 
 COPY public.tournament_matches (id, tournament_id, participant1_id, participant2_id, challonge_id, round, completed, winner_participant_id, score) FROM stdin;
+1	1	17	7	429807700	1	f	\N	\N
+2	1	18	15	429807701	1	f	\N	\N
+3	1	20	16	429807702	1	f	\N	\N
+4	1	6	12	429807703	1	f	\N	\N
+5	1	5	4	429807704	1	f	\N	\N
+6	1	14	3	429807705	1	f	\N	\N
+7	1	13	21	429807706	1	f	\N	\N
+8	1	8	22	429807707	1	f	\N	\N
+9	1	\N	\N	429807708	2	f	\N	\N
+10	1	\N	\N	429807709	2	f	\N	\N
+11	1	\N	\N	429807710	2	f	\N	\N
+12	1	\N	\N	429807711	2	f	\N	\N
+13	1	\N	\N	429807712	3	f	\N	\N
+14	1	\N	\N	429807713	3	f	\N	\N
+15	1	\N	\N	429807714	4	f	\N	\N
+16	1	\N	\N	429807715	0	f	\N	\N
 \.
 
 
@@ -340,17 +369,22 @@ COPY public.tournament_matches (id, tournament_id, participant1_id, participant2
 --
 
 COPY public.tournament_participants (tournament_id, user_id, challonge_id, id) FROM stdin;
-1	13	274469005	2
 1	15	274473650	3
 1	16	274506816	4
 1	17	274507297	5
 1	18	274507866	6
 1	19	274511293	7
 1	20	274514532	8
-1	1	274518086	10
 1	10	274557766	12
 1	11	274564080	13
 1	21	274574459	14
+1	12	274654326	15
+1	22	274676678	16
+1	14	274692080	17
+1	7	274758576	18
+1	23	274765316	20
+1	13	274765678	21
+1	24	274798867	22
 \.
 
 
@@ -359,7 +393,7 @@ COPY public.tournament_participants (tournament_id, user_id, challonge_id, id) F
 --
 
 COPY public.tournaments (id, challonge_id, name, slug, url, ongoing, winner_id, current_tournament) FROM stdin;
-1	16903851	AFC Blaze Cup	afc_blaze_cup	https://challonge.com/afc_blaze_cup	f	\N	t
+1	16903851	AFC Blaze Cup	afc_blaze_cup	https://challonge.com/afc_blaze_cup	t	\N	t
 \.
 
 
@@ -389,6 +423,9 @@ COPY public.users (id, discord_id, username, country_timezone, is_active, create
 19	920778639363166228	Alucir	Brazil	t	2025-10-03 17:47:37.558282+00	novice
 20	468936156642410496	Igfer	Pery	t	2025-10-03 18:15:37.958969+00	intermediate
 21	376079758498463754	pawol	Poland	t	2025-05-07 00:00:00+00	veteran
+22	119899534506590208	Linky931	Norway	t	2025-10-05 08:36:12.387824+00	Veteran
+23	1236601427007377470	LouTheFou	Germany	t	2025-10-06 13:32:17.087808+00	novice
+24	132905484507283456	TayPk	Canada	t	2025-10-06 13:41:13.842217+00	intermediate
 \.
 
 
@@ -407,13 +444,13 @@ SELECT pg_catalog.setval('public.pokemon_id_seq', 33, true);
 --
 --
 
-SELECT pg_catalog.setval('public.tournament_matches_id_seq', 1, false);
+SELECT pg_catalog.setval('public.tournament_matches_id_seq', 16, true);
 
 
 --
 --
 
-SELECT pg_catalog.setval('public.tournament_participants_id_seq', 14, true);
+SELECT pg_catalog.setval('public.tournament_participants_id_seq', 22, true);
 
 
 --
@@ -425,7 +462,7 @@ SELECT pg_catalog.setval('public.tournaments_id_seq', 1, true);
 --
 --
 
-SELECT pg_catalog.setval('public.users_id_seq', 21, true);
+SELECT pg_catalog.setval('public.users_id_seq', 24, true);
 
 
 --
@@ -566,6 +603,12 @@ ALTER TABLE ONLY public.tournament_participants
 
 ALTER TABLE ONLY public.tournaments
     ADD CONSTRAINT tournaments_winner_id_fkey FOREIGN KEY (winner_id) REFERENCES public.users(id);
+
+
+--
+--
+
+REVOKE USAGE ON SCHEMA public FROM PUBLIC;
 
 
 --

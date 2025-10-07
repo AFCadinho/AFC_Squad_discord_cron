@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING, List
 
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from datetime import datetime
 from database.base import Base
 
 if TYPE_CHECKING:
@@ -26,7 +27,7 @@ class TournamentMatches(Base):
         "tournament_participants.id", ondelete="SET NULL"), nullable=True)
     challonge_id: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     round: Mapped[int] = mapped_column(sa.Integer, nullable=False)
-    
+    scheduled_datetime: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
     completed: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false())
     winner_participant_id: Mapped[int  | None] = mapped_column(
         sa.ForeignKey("tournament_participants.id", ondelete="SET NULL"),
@@ -63,7 +64,8 @@ class TournamentMatches(Base):
             f"participant2_id={self.participant2_id}, "
             f"winner_participant_id={self.winner_participant_id}, "
             f"completed={self.completed}, "
-            f"score={repr(self.score)}"
+            f"score={repr(self.score)}, "
+            f"scheduled_datetime={self.scheduled_datetime}"
             ")>"
         )
 

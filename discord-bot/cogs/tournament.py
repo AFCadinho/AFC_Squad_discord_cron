@@ -4,15 +4,16 @@ import os
 import challonge
 import requests
 import sqlalchemy as sa
-import time
 import validators
 
-from datetime import datetime
+from datetime import datetime, timezone
 from discord import app_commands
 from discord.ext import commands
 from sqlalchemy import select
 from database.database import Session
 from database.models import Tournament, User, TournamentParticipants, TournamentMatches
+from helpers import country_to_timezone, discord_id_to_member
+from zoneinfo import ZoneInfo
 
 # Global Variable
 USERNAME = os.getenv("CH_USERNAME")
@@ -79,11 +80,6 @@ class Tournaments(commands.Cog):
         tournament = challonge.tournaments.show(slug)
         tournament_id = tournament["id"]  # type: ignore
         return tournament_id if tournament_id else None
-
-    @staticmethod
-    def __discord_id_to_member(session, discord_id):
-        stmt = select(User).where(User.discord_id == discord_id)
-        return session.scalars(stmt).first()
 
     @staticmethod
     def __user_id_to_member(session, user_id):
@@ -586,7 +582,7 @@ class Tournaments(commands.Cog):
             if not tournament:
                 return "The ongoing tournament does not exist in the database."
 
-            crew_member = self.__discord_id_to_member(session, member.id)
+            crew_member = discord_id_to_member(session, member.id)
             if not crew_member:
                 return f"{member.name} does not exist in our database"
 
@@ -610,7 +606,7 @@ class Tournaments(commands.Cog):
             if not tournament:
                 return None, "The ongoing tournament does not exist in the database."
 
-            crew_member = self.__discord_id_to_member(session, member.id)
+            crew_member = discord_id_to_member(session, member.id)
             if not crew_member:
                 return None, f"{member.name} does not exist in our database"
 
@@ -807,9 +803,9 @@ class Tournaments(commands.Cog):
                 )
                 return
 
-            crew_member = self.__discord_id_to_member(
+            crew_member = discord_id_to_member(
                 session, reporter_discord_id)
-            winning_crew_member = self.__discord_id_to_member(
+            winning_crew_member = discord_id_to_member(
                 session, winner_discord_id)
             if not crew_member or not winning_crew_member:
                 await interaction.response.send_message(
@@ -933,12 +929,12 @@ class Tournaments(commands.Cog):
                 )
                 return
 
-            crew_member1 = self.__discord_id_to_member(session, player1.id)
-            crew_member2 = self.__discord_id_to_member(session, player2.id)
-            winning_crew_member = self.__discord_id_to_member(
+            crew_member1 = discord_id_to_member(session, player1.id)
+            crew_member2 = discord_id_to_member(session, player2.id)
+            winning_crew_member = discord_id_to_member(
                 session, winner.id)
 
-            if not crew_member1 or not crew_member2:
+            if not crew_member1 or not crew_member2 or not winning_crew_member:
                 await interaction.response.send_message(
                     embed=self.build_simple_embed(
                         "❌ Error", "One or more players do not exist in our database.", discord.Color.red()),
@@ -1060,8 +1056,8 @@ class Tournaments(commands.Cog):
                 return False, "No tournament running right now"
 
             # Get Crew Members
-            crew_member1 = self.__discord_id_to_member(session, discord_id_1)
-            crew_member2 = self.__discord_id_to_member(session, discord_id_2)
+            crew_member1 = discord_id_to_member(session, discord_id_1)
+            crew_member2 = discord_id_to_member(session, discord_id_2)
             if not crew_member1 or not crew_member2:
                 return False, "One or more players do not exist in our database."
 
@@ -1084,20 +1080,12 @@ class Tournaments(commands.Cog):
 
             return True, "I found your match"
 
-    async def post_schedule_embed(self, year, month, day, hour, minute, player1, player2, round, schedule_channel, bracket_url):
-        # Other logic
-        dt = datetime(
-            year=year,
-            month=month,
-            day=day,
-            hour=hour,
-            minute=minute
-        )
-
-        if dt < datetime.now():
+    async def post_schedule_embed(self, dt, player1, player2, round, schedule_channel, bracket_url):
+        
+        if dt < datetime.now(timezone.utc):
             return None
 
-        unix_ts = int(time.mktime(dt.timetuple()))
+        unix_ts = int(dt.timestamp())
         embed = discord.Embed(
             title=f"📅 Match Scheduled — Round {round}",
             description=(
@@ -1134,6 +1122,9 @@ class Tournaments(commands.Cog):
         discord_user1 = player1
         discord_user2 = player2
         schedule_channel = self.bot.get_channel(int(SCHEDULING_CH))
+
+        ## GET TIMEZONE FROM USER
+
         if not interaction.guild:
             return
 
@@ -1153,25 +1144,55 @@ class Tournaments(commands.Cog):
                 ephemeral=True
             )
             return
+        
+        with Session.begin() as session:
+            crew_member = discord_id_to_member(session, interaction.user.id)
+            if not crew_member:
+                return
 
-        # Other logic
-        bracket_url = f"https://challonge.com/{slug}"
-        new_post_id = await self.post_schedule_embed(year, month, day, hour, minute, discord_user1, discord_user2, round, schedule_channel, bracket_url)
-        if not new_post_id:
+            country_member = crew_member.country
+            if not country_member:
+                await interaction.response.send_message(f"Your country value is not set. Please contact management")
+                return
+        
+
+            timezone_member = crew_member.timezone_name
+            if not timezone_member:
+                timezone_member = country_to_timezone(country_member)
+
+            if not timezone_member:
+                return
+            
+            tz = ZoneInfo(timezone_member)
+
+            dt = datetime(
+            year=year,
+            month=month,
+            day=day,
+            hour=hour,
+            minute=minute,
+            tzinfo=tz)
+
+            dt_utc = dt.astimezone(timezone.utc)
+
+            # Other logic
+            bracket_url = f"https://challonge.com/{slug}"
+            new_post_id = await self.post_schedule_embed(dt_utc, discord_user1, discord_user2, round, schedule_channel, bracket_url)
+            if not new_post_id:
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed(
+                        "❌ Error", "You cannot schedule a match in the past.", discord.Color.red()),
+                    ephemeral=True
+                )
+                return
+
+            post_url = f"https://discord.com/channels/{interaction.guild.id}/{schedule_channel.id}/{new_post_id}"
+
             await interaction.response.send_message(
                 embed=self.build_simple_embed(
-                    "❌ Error", "You cannot schedule a match in the past.", discord.Color.red()),
+                    "✅ Match Scheduled", f"[View post here]({post_url})", discord.Color.green()),
                 ephemeral=True
             )
-            return
-
-        post_url = f"https://discord.com/channels/{interaction.guild.id}/{schedule_channel.id}/{new_post_id}"
-
-        await interaction.response.send_message(
-            embed=self.build_simple_embed(
-                "✅ Match Scheduled", f"[View post here]({post_url})", discord.Color.green()),
-            ephemeral=True
-        )
 
     @app_commands.command(name="schedule_match", description="Schedule your match and post it to the scheduling channel")
     async def schedule_match(
@@ -1184,15 +1205,15 @@ class Tournaments(commands.Cog):
             day: app_commands.Range[int, 1, 31],
             hour: app_commands.Range[int, 0, 23],
             minute: app_commands.Range[int, 0, 59]):
-
-        # CODE START
+        
+                # CODE START
         slug = slugify(self.current_tournament)
         discord_user1 = interaction.user
         discord_user2 = opponent
         schedule_channel = self.bot.get_channel(int(SCHEDULING_CH))
         if not interaction.guild:
             return
-
+        
         if not slug:
             await interaction.response.send_message(
                 embed=self.build_simple_embed(
@@ -1200,7 +1221,7 @@ class Tournaments(commands.Cog):
                 ephemeral=True
             )
             return
-
+        
         match_exists, msg = await self.check_if_match_exists(slug, round, discord_user1.id, discord_user2.id)
         if not match_exists:
             await interaction.response.send_message(
@@ -1209,22 +1230,63 @@ class Tournaments(commands.Cog):
                 ephemeral=True
             )
             return
+        
+        with Session.begin() as session:
+            crew_member = discord_id_to_member(session, interaction.user.id)
+           
+            if not crew_member:
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed(
+                        "❌ Error", "You are not registered in our database. Please contact management.", discord.Color.red()),
+                    ephemeral=True
+                )
+                return
+            
+            country_member = crew_member.country
+            if not country_member:
+                await interaction.response.send_message(f"Your country value is not set. Please contact management")
+                return
+        
 
-        bracket_url = f"https://challonge.com/{slug}"
-        new_post_id = await self.post_schedule_embed(year, month, day, hour, minute, discord_user1, discord_user2, round, schedule_channel, bracket_url)
-        if not new_post_id:
+            timezone_member = crew_member.timezone_name
+            if not timezone_member:
+                timezone_member = country_to_timezone(country_member)
+
+            if not timezone_member:
+                return
+            
+            tz = ZoneInfo(timezone_member)
+
+            dt = datetime(
+            year=year,
+            month=month,
+            day=day,
+            hour=hour,
+            minute=minute,
+            tzinfo=tz)
+
+            dt_utc = dt.astimezone(timezone.utc)
+
+            bracket_url = f"https://challonge.com/{slug}"
+
+            new_post_id = await self.post_schedule_embed(dt_utc, discord_user1, discord_user2, round, schedule_channel, bracket_url)
+            await interaction.response.send_message(f"Succeeding creating post schedule message")
+            
+            if not new_post_id:
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed(
+                        "❌ Error", "You cannot schedule a match in the past.", discord.Color.red()),
+                    ephemeral=True
+                )
+                return
+
+            post_url = f"https://discord.com/channels/{interaction.guild.id}/{schedule_channel.id}/{new_post_id}"
+
             await interaction.response.send_message(
-                embed=self.build_simple_embed(
-                    "❌ Error", "You cannot schedule a match in the past.", discord.Color.red()),
-                ephemeral=True
+                embed=self.build_simple_embed("✅ Match scheduled!", f"[View post here]({post_url})", discord.Color.green()), ephemeral=True
             )
-            return
 
-        post_url = f"https://discord.com/channels/{interaction.guild.id}/{schedule_channel.id}/{new_post_id}"
 
-        await interaction.response.send_message(
-            embed=self.build_simple_embed("✅ Match scheduled!", f"[View post here]({post_url})", discord.Color.green()), ephemeral=True
-        )
 
     @app_commands.command(name="find_current_match", description="Find the details of your current tournament match")
     async def find_current_match(self, interaction: discord.Interaction):
@@ -1245,7 +1307,7 @@ class Tournaments(commands.Cog):
 
         # Discord_id -> Participant_id
         with Session() as session:
-            crew_member = self.__discord_id_to_member(session, discord_user.id)
+            crew_member = discord_id_to_member(session, discord_user.id)
             if not crew_member:
                 await interaction.response.send_message(
                     embed=self.build_simple_embed(
