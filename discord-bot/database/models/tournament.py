@@ -33,6 +33,7 @@ class TournamentMatches(Base):
         sa.ForeignKey("tournament_participants.id", ondelete="SET NULL"),
         nullable=True)
     score: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
+    battle_url: Mapped[str] = mapped_column(sa.Text, nullable=True)
 
     # Relationship
     tournament_link: Mapped["Tournament"] = relationship(

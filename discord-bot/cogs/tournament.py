@@ -12,7 +12,7 @@ from discord.ext import commands
 from sqlalchemy import select
 from database.database import Session
 from database.models import Tournament, User, TournamentParticipants, TournamentMatches
-from helpers import country_to_timezone, discord_id_to_member
+from helpers import country_to_timezone, discord_id_to_member, log_command_error
 from zoneinfo import ZoneInfo
 
 # Global Variable
@@ -40,7 +40,23 @@ def fetch_current_tournament():
         stmt = select(Tournament).where(Tournament.current_tournament == True)
         current_tournament = session.scalars(stmt).first()
         return current_tournament.slug if current_tournament else None
+    
+def fetch_current_round():
+    with Session.begin() as session:        
+        stmt = select(TournamentMatches.round).join(
+            Tournament, Tournament.id == TournamentMatches.tournament_id).where(
+                TournamentMatches.completed == False,
+                Tournament.current_tournament == True,
+                TournamentMatches.round > 0
+            )
+        
+        matches = session.scalars(stmt).all()
+        if not matches:
+            return None
 
+        lowest_round =  min(matches)
+
+        return lowest_round
 
 def slugify(string) -> str | None:
     if not string:
@@ -53,6 +69,7 @@ class Tournaments(commands.Cog):
         self.bot = bot
         auth_tournament()
         self.current_tournament = fetch_current_tournament()
+        self.current_round = fetch_current_round()
 
     # Static Methods ---------------------------------
     @staticmethod
@@ -170,6 +187,23 @@ class Tournaments(commands.Cog):
 
         return None
 
+    @commands.Cog.listener()
+    async def on_app_command_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
+        # Log to Discord
+        await log_command_error(self.bot, interaction, error)
+
+        # Give user a friendly message if not already replied
+        if not interaction.response.is_done():
+            await interaction.response.send_message(
+                "⚠️ Something went wrong while running this command.",
+                ephemeral=True
+            )
+        else:
+            await interaction.followup.send(
+                "⚠️ Something went wrong while running this command.",
+                ephemeral=True
+            )
+    
     async def _log_to_logs(self, *, title: str, description: str = "", fields: dict[str, str] | None = None):
         """Send a small embed to the logs channel. Safe no-op if channel missing/inaccessible."""
         logs_channel = LOGS_CH
@@ -286,6 +320,15 @@ class Tournaments(commands.Cog):
             )
             session.add(tournament_match)
 
+    @app_commands.command(name="get_current_round", description="Fetch the current round number of the current Tournament")
+    @app_commands.default_permissions(administrator=True)
+    async def get_current_round(self, interaction: discord.Interaction):
+        current_round = self.current_round
+        if not self.current_round:
+            await interaction.response.send_message(f"There is either no tournament running or the tournament hasn't started {current_round}", ephemeral=True)
+        
+        await interaction.response.send_message(f"The current round number is: {current_round}", ephemeral=True)
+    
     @app_commands.command(name="set_current_tournament", description="Matches all the tournament commands to a specific tournament")
     @app_commands.default_permissions(administrator=True)
     async def set_current_tournament(self, interaction: discord.Interaction, name: str):
@@ -416,7 +459,7 @@ class Tournaments(commands.Cog):
                 remote_delete_error_msg = str(e)
             except requests.HTTPError as e:
                 if e.response is not None and e.response.status_code == 404:
-                    pass  # already gone on Challonge, that's fine
+                    pass  
                 else:
                     remote_delete_error_msg = str(e)
 
@@ -559,7 +602,7 @@ class Tournaments(commands.Cog):
     async def auto_complete_ongoing_tournament(self, interaction: discord.Interaction, current: str):
         return await self.__autocomplete_unfinished_names(interaction, current)
 
-    @start_tournament.autocomplete("name")
+    @start_tournament.autocomplete(name="name")
     async def auto_complete_new_tournament(self, interaction: discord.Interaction, current: str):
         return await self.__autocomplete_new_tournaments(interaction, current)
 
@@ -1187,7 +1230,7 @@ class Tournaments(commands.Cog):
                 return
 
             post_url = f"https://discord.com/channels/{interaction.guild.id}/{schedule_channel.id}/{new_post_id}"
-
+            
             await interaction.response.send_message(
                 embed=self.build_simple_embed(
                     "✅ Match Scheduled", f"[View post here]({post_url})", discord.Color.green()),
@@ -1358,6 +1401,19 @@ class Tournaments(commands.Cog):
                 return
 
             post_url = f"https://discord.com/channels/{interaction.guild.id}/{schedule_channel.id}/{new_post_id}"
+            
+            await self._log_to_logs(
+                title="🕒 Scheduling Match",
+                description=f"By: {interaction.user.mention} ({interaction.user.id})",
+                fields={
+                    "Round": match_row.round,
+                    "Players": f"{discord_user1.mention} vs {discord_user2.mention}",
+                    "Bracket": tournament.url if tournament and tournament.url else "—",
+                    "Channel": f"<#{interaction.channel_id}>",
+                    "Scheduled Time": f"<#{match_row.scheduled_datetime}>",
+                },
+
+            )
             
             await interaction.response.send_message(
                 embed=self.build_simple_embed("✅ Match scheduled!", f"[View post here]({post_url})\n\ndt utc: {dt_utc}, match_row: {match_row}", discord.Color.green()), ephemeral=True
