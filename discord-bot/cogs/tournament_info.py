@@ -160,7 +160,7 @@ class TournamentInfo(commands.Cog):
 
                 "🎖️ **9th – 16th Place**\n"
                 "• 💰 12,500 Pokédollars\n"
-                "• 🧠 Crew Shop **TM of Choice**\n\n"
+                "• 🧠 Crew Shop **Egg or Tutor**\n\n"
 
                 "⚖️ Only **Rank 1** receives the Champion role.\n"
                 "Rewards may be adjusted in future tournaments."
