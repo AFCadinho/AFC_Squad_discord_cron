@@ -1334,6 +1334,8 @@ class Tournaments(commands.Cog):
             timezone_member = crew_member.timezone_name
             if not timezone_member:
                 timezone_member = country_to_timezone(country_member)
+
+            if not timezone_member: 
                 await interaction.response.send_message(
                     embed=self.build_simple_embed(
                         "❌ Error", "NO TIMEZONE SET", discord.Color.red()),
