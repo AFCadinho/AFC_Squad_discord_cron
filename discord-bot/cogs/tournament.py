@@ -77,6 +77,96 @@ class Tournaments(commands.Cog):
 
     # Static Methods ---------------------------------
     @staticmethod
+    def __get_tournament_player(session, slug: str, discord_id: int):
+        tour_stmt = (
+            select(Tournament, TournamentParticipants)
+            .join(TournamentParticipants, TournamentParticipants.tournament_id == Tournament.id)
+            .join(User, TournamentParticipants.user_id == User.id)
+            .where(
+                Tournament.slug == slug,
+                Tournament.current_tournament == True,
+                User.discord_id == discord_id
+            )
+        )
+        return session.execute(tour_stmt).first()
+
+    @staticmethod
+    def __get_match_tuple(session, challonge_match_id: int):
+        p1 = aliased(TournamentParticipants)
+        p2 = aliased(TournamentParticipants)
+
+        stmt = (
+            select(TournamentMatches, p1, p2).
+            join(p1, p1.id == TournamentMatches.participant1_id).
+            join(p2, p2.id == TournamentMatches.participant2_id).
+            where(TournamentMatches.challonge_id == challonge_match_id)
+        )
+        return session.execute(stmt).first()
+
+    @staticmethod
+    def __get_match_participants(session, tournament_id, participant_id, round):
+        p1 = aliased(TournamentParticipants)
+        p2 = aliased(TournamentParticipants)
+
+        stmt = (
+            select(TournamentMatches, p1, p2)
+            .join(p1, p1.id == TournamentMatches.participant1_id)
+            .join(p2, p2.id == TournamentMatches.participant2_id)
+            .where(
+                TournamentMatches.tournament_id == tournament_id,
+                TournamentMatches.round == round,
+                sa.or_(
+                    TournamentMatches.participant1_id == participant_id,
+                    TournamentMatches.participant2_id == participant_id
+                )
+            )
+        )
+
+        return session.execute(stmt).first()
+
+    @staticmethod
+    def __build_match_embed(tournament, match, p1, p2, requester_discord_id, admin=False) -> discord.Embed:
+        username_player1 = p1.user_link.username
+        username_player2 = p2.user_link.username
+
+        title = "🎯 Your Current Match" if not admin else "🛠️ Admin Match View"
+
+        match_round = match.round
+        opponent_username = username_player1 if p1.user_link.discord_id == requester_discord_id else username_player2
+
+        desc_lines = []
+        if match_round is not None:
+            desc_lines.append(f"**Round:** {match_round}")
+
+        if not admin:
+            desc_lines.append(f"**Opponent:** {opponent_username}")
+        else:
+            desc_lines.append(
+                f" **Players:** {username_player1} VS {username_player2}")
+
+        # Build description text
+        description = "\n".join(desc_lines)
+
+        if getattr(tournament, "url", None):
+            description += f"\n\n**Bracket:** [View on Challonge]({tournament.url})"
+
+        dt = match.scheduled_datetime
+        if dt and opponent_username:
+            ts = int(dt.timestamp())  # unix epoch
+            # :F = full date/time, :R = relative (e.g., "in 2 hours")
+            description += f"\n\n**Scheduled:** <t:{ts}:F> • <t:{ts}:R>"
+        else:
+            description += "\n\n💡 Use `/schedule_match` to post your match time in the scheduling channel."
+
+        embed = discord.Embed(
+            title=title,
+            description=description,
+            color=discord.Color.blurple()
+        )
+        embed.timestamp = discord.utils.utcnow()
+        return embed
+
+    @staticmethod
     def __get_participant_from_id(session, participant_id):
         stmt = select(TournamentParticipants).where(
             TournamentParticipants.id == participant_id)
@@ -1448,8 +1538,6 @@ class Tournaments(commands.Cog):
             return
 
         slug = slugify(self.current_tournament)
-        discord_user = interaction.user
-
         if not slug:
             await interaction.response.send_message(
                 embed=self.build_simple_embed(
@@ -1459,19 +1547,11 @@ class Tournaments(commands.Cog):
             return
 
         await interaction.response.defer(ephemeral=True, thinking=True)
+
         with Session() as session:
 
-            tour_stmt = (
-                select(Tournament, TournamentParticipants)
-                .join(TournamentParticipants, TournamentParticipants.tournament_id == Tournament.id)
-                .join(User, TournamentParticipants.user_id == User.id)
-                .where(
-                    Tournament.slug == slug,
-                    Tournament.current_tournament == True,
-                    User.discord_id == discord_user.id
-                )
-            )
-            row = session.execute(tour_stmt).first()
+            row = self.__get_tournament_player(
+                session, slug, interaction.user.id)
             if not row:
                 await interaction.followup.send(f"❌ You are not registered in the current tournament, or it doesn’t exist.", ephemeral=True)
                 return
@@ -1480,73 +1560,59 @@ class Tournaments(commands.Cog):
 
             challonge_match = self.__find_next_match_player(
                 slug, tournament_participant.challonge_id)
-            if not challonge_match:
+            if not challonge_match or challonge_match["id"]:
                 # No match for player
                 await interaction.followup.send(
                     embed=self.build_simple_embed(
-                        "ℹ️ Info", f"No match found on challonge for {discord_user.display_name}", discord.Color.red()),
+                        "ℹ️ Info", f"No match found on challonge for {interaction.user.display_name}", discord.Color.red()),
                     ephemeral=True
                 )
                 return
 
-            challonge_match_id = challonge_match["id"] if challonge_match else None
-            if not challonge_match_id:
-                # no challonge id for match
-                await interaction.followup.send(
-                    embed=self.build_simple_embed(
-                        "❌ Error", "No ID found for this match on Challonge", discord.Color.red()),
-                    ephemeral=True
-                )
-                return
-
-            p1 = aliased(TournamentParticipants)
-            p2 = aliased(TournamentParticipants)
-
-            match_stmt = (
-                select(TournamentMatches, p1, p2).
-                join(p1, p1.id == TournamentMatches.participant1_id).
-                join(p2, p2.id == TournamentMatches.participant2_id).
-                where(TournamentMatches.challonge_id == challonge_match_id)
-            )
-            match_row = session.execute(match_stmt).first()
+            match_row = self.__get_match_tuple(session, challonge_match["id"])
             if not match_row:
-                await interaction.followup.send(f"❌ No Match found in database for your next Challonge Match", ephemeral=True)
+                await interaction.followup.send("❌ No match found in the database for your next Challonge match.", ephemeral=True)
                 return
 
             match, player1, player2 = match_row
+            embed = self.__build_match_embed(
+                tournament, match, player1, player2, interaction.user.id)
 
-            username_player1 = player1.user_link.username
-            username_player2 = player2.user_link.username
+            await interaction.followup.send(embed=embed, ephemeral=True)
 
-            match_round = match.round
-            opponent_username = username_player1 if player1.user_link.discord_id == discord_user.id else username_player2
+    @app_commands.command(name="admin_find_match", description="Find the details of any match in the current Tournament")
+    @app_commands.default_permissions(administrator=True)
+    async def admin_find_match(self, interaction: discord.Interaction, round_number: int, member: discord.Member):
+        if interaction.guild_id != int(GUILD_ID):
+            await interaction.response.send_message("You cannot use this command from this server/chat")
+            return
 
-            desc_lines = []
-            if match_round is not None:
-                desc_lines.append(f"**Round:** {match_round}")
-
-            desc_lines.append(f"**Opponent:** {opponent_username}")
-
-            # Build description text
-            description = "\n".join(desc_lines)
-
-            if getattr(tournament, "url", None):
-                description += f"\n\n**Bracket:** [View on Challonge]({tournament.url})"
-
-            dt = match.scheduled_datetime
-            if dt and opponent_username:
-                ts = int(dt.timestamp())  # unix epoch
-                # :F = full date/time, :R = relative (e.g., "in 2 hours")
-                description += f"\n\n**Scheduled:** <t:{ts}:F> • <t:{ts}:R>"
-            else:
-                description += "\n\n💡 Use `/schedule_match` to post your match time in the scheduling channel."
-
-            embed = discord.Embed(
-                title="🎯 Your Current Match",
-                description=description,
-                color=discord.Color.blurple()
+        slug = slugify(self.current_tournament)
+        if not slug:
+            await interaction.response.send_message(
+                embed=self.build_simple_embed(
+                    "ℹ️ Info", "No tournament running right now.", discord.Color.blurple()),
+                ephemeral=True
             )
-            embed.timestamp = discord.utils.utcnow()
+            return
+
+        await interaction.response.defer(ephemeral=True, thinking=True)
+
+        with Session.begin() as session:
+
+            player_row = self.__get_tournament_player(
+                session, slug, member.id)
+            if not player_row:
+                await interaction.followup.send(f"❌ You are not registered in the current tournament, or it doesn’t exist.", ephemeral=True)
+                return
+
+            tournament, tournament_participant = player_row
+            match_row = self.__get_match_participants(
+                session, tournament.id, tournament_participant.id, round_number)
+
+            match, player1, player2 = match_row
+            embed = self.__build_match_embed(
+                tournament, match, player1, player2, member.id, admin=True)
 
             await interaction.followup.send(embed=embed, ephemeral=True)
 
