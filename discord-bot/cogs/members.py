@@ -56,17 +56,17 @@ class Member(commands.Cog):
         with Session.begin() as session:
             crew_member = discord_id_to_member(session, interaction.user.id)
             if not crew_member:
-                await interaction.response.send_message(f"You are not registered in our database. Please contact management")
+                await interaction.response.send_message(f"You are not registered in our database. Please contact management" , ephemeral=True)
                 return
 
             country_name = crew_member.country
             if not country_name:
-                await interaction.response.send_message(f"No Country set for this user. Please contact management")
+                await interaction.response.send_message(f"No Country set for this user. Please contact management", ephemeral=True)
                 return
 
             timezone_names = get_timezones(country_name)
             if not timezone_names:
-                await interaction.response.send_message(f"No Timezone list available for country: {country_name}")
+                await interaction.response.send_message(f"No Timezone list available for country: {country_name}", ephemeral=True)
                 return
             tz_name = None
             for tz in timezone_names:
@@ -74,11 +74,11 @@ class Member(commands.Cog):
                     tz_name = tz
 
             if not tz_name:
-                await interaction.response.send_message(f"The inputted timezone name does not exist for country: {country_name}")
+                await interaction.response.send_message(f"The inputted timezone name does not exist for country: {country_name}", ephemeral=True)
                 return
 
             crew_member.timezone_name = tz_name
-            await interaction.response.send_message(f"Timezone successfully updated to: {tz_name}")
+            await interaction.response.send_message(f"Timezone successfully updated to: {tz_name}", ephemeral=True)
 
     @set_timezone.autocomplete("timezone_name")
     async def autocomplete_set_timezone(self, interaction: discord.Interaction, current: str):
