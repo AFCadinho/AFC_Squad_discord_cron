@@ -6,10 +6,12 @@ from database.database import Session
 
 from sqlalchemy import select    
 from datetime import datetime
+from helpers import EmbedFactory
 
 class Admin(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.embed = EmbedFactory(bot)
         self.pvp_experiences = ["novice", "intermediate", "veteran"]
 
     @staticmethod
@@ -151,6 +153,11 @@ class Admin(commands.Cog):
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
+    @app_commands.command(name="say_hello_world")
+    async def say_hello_world(self, interaction: discord.Interaction):
+        await interaction.response.send_message(
+            embed=self.embed.success(f"Hello World"), ephemeral=True
+        )
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Admin(bot))

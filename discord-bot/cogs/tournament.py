@@ -418,7 +418,7 @@ class Tournaments(commands.Cog):
             try:
                 ch = await self.bot.fetch_channel(logs_channel)
             except Exception:
-                return  # can't reach logs channel; bail quietly
+                return
 
         print("CREATING EMBED FOR LOGS CHANNEL")
         embed = discord.Embed(
