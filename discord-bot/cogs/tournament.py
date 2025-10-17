@@ -532,6 +532,15 @@ class Tournaments(commands.Cog):
 
         await interaction.response.send_message(f"The current round number is: {current_round}", ephemeral=True)
 
+    @app_commands.command(name="set_current_round", description="Set the current round number of the current Tournament")
+    @app_commands.default_permissions(administrator=True)
+    async def set_current_round(self, interaction: discord.Interaction, match_round: str):
+        self.current_round = match_round
+        if not self.current_tournament:
+            await interaction.response.send_message(f"There is currently no tournament running", ephemeral=True)
+
+        await interaction.response.send_message(f"The current round number is: {self.current_round}", ephemeral=True)
+    
     @app_commands.command(name="set_current_tournament", description="Matches all the tournament commands to a specific tournament")
     @app_commands.default_permissions(administrator=True)
     async def set_current_tournament(self, interaction: discord.Interaction, name: str):
