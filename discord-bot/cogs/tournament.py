@@ -5,6 +5,7 @@ import challonge
 import requests
 import sqlalchemy as sa
 import validators
+import logging
 
 from datetime import datetime, timezone
 from discord import app_commands
@@ -28,6 +29,8 @@ VIDEO_CHANNEL = int(os.getenv("VIDEO_CH_ID", 0))
 ANNOUNCEMENT_CH = int(os.getenv("ANNOUNCEMENTS_CH_ID", 0))
 LOGS_CH = int(os.getenv("LOGS_CH_ID", 0))
 SCHEDULING_CH = int(os.getenv("SCHEDULING_CH_ID", 0))
+
+log = logging.getLogger(__name__)
 
 
 def auth_tournament():
@@ -102,6 +105,8 @@ class Tournaments(commands.Cog):
     @staticmethod
     def __get_match_for_users(session, slug, match_round, discord_id, opponent_discord_id):
 
+        log.info(f"""DEBUGGING get_match_for_users help:\nslug={slug}, round={match_round}, ids={discord_id}, {opponent_discord_id}""")
+        
         p1 = aliased(TournamentParticipants)
         p2 = aliased(TournamentParticipants)
         u1 = aliased(User)
