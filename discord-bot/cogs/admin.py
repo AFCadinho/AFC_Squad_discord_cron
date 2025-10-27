@@ -105,7 +105,7 @@ class Admin(commands.Cog):
                 case _:
                     await interaction.response.send_message("Invalid option")
             
-            await interaction.response.send_message("Userdata successfully edited")
+            await interaction.response.send_message("Userdata successfully edited", ephemeral=True)
                 
 
     @app_commands.command(name="toggle_active_status", description="Toggle the active status of a user")
