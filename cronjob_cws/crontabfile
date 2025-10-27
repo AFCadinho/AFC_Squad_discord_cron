@@ -1,9 +1,13 @@
 # Crew Wars reminders - 5 minutes before each event (UTC time)
+55 15 * * 1 cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
+55 09 * * 3 cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
+55 19 * * 3 cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
+55 19 * * 4 cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
+55 02 * * 6 cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
+55 00 * * 0 cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
+55 17 * * 0 cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
 
-55 15 * * 1 cd /app && /usr/local/bin/poetry run python3 webhook.py >> /var/log/cron.log 2>&1
-55 09 * * 3 cd /app && /usr/local/bin/poetry run python3 webhook.py >> /var/log/cron.log 2>&1
-55 19 * * 3 cd /app && /usr/local/bin/poetry run python3 webhook.py >> /var/log/cron.log 2>&1
-55 19 * * 4 cd /app && /usr/local/bin/poetry run python3 webhook.py >> /var/log/cron.log 2>&1
-55 02 * * 6 cd /app && /usr/local/bin/poetry run python3 webhook.py >> /var/log/cron.log 2>&1
-55 00 * * 0 cd /app && /usr/local/bin/poetry run python3 webhook.py >> /var/log/cron.log 2>&1
-55 17 * * 0 cd /app && /usr/local/bin/poetry run python3 webhook.py >> /var/log/cron.log 2>&1
+# Crew wars Wins check in
+55 22 1 * * cd /app && /usr/local/bin/poetry run python3 wins_tracker.py >> /var/log/cron.log 2>&1
+55 22 14 * * cd /app && /usr/local/bin/poetry run python3 wins_tracker.py >> /var/log/cron.log 2>&1
+55 22 28 * * cd /app && /usr/local/bin/poetry run python3 wins_tracker.py >> /var/log/cron.log 2>&1

@@ -65,6 +65,7 @@ class Admin(commands.Cog):
         app_commands.Choice(name="Country/Timezone", value="country"),
         app_commands.Choice(name="Joined at", value="created_at"),
         app_commands.Choice(name="PvP Experience", value="pvp_experience"),
+        app_commands.Choice(name="Crew Wars Wins", value="crew_wars_wins"),
     ])
     async def edit_user(self, interaction: discord.Interaction, user: discord.User, data_to_edit: app_commands.Choice[str], new_value: str):
         
@@ -95,6 +96,12 @@ class Admin(commands.Cog):
                         return
 
                     existing_user.pvp_experience = new_value
+                case "crew_wars_wins":
+                    if not new_value.isdigit():
+                        await interaction.response.send_message("Crew wars wins has to be digit. e.g 69")
+                        return
+                    win_value = int(new_value)
+                    existing_user.crew_wars_wins = win_value
                 case _:
                     await interaction.response.send_message("Invalid option")
             
@@ -150,6 +157,11 @@ class Admin(commands.Cog):
                         value=(row.country or "—"), inline=True)
         embed.add_field(name="Join Date", value=str(
             row.created_at.strftime("%d-%m-%Y")), inline=True)
+        embed.add_field(
+            name="🏆 Crew Wars Wins",
+            value=f"{row.crew_wars_wins:,}",
+            inline=True
+        )
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
 

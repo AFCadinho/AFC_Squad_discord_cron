@@ -1,7 +1,9 @@
 import datetime
 import requests
+import os
 
-WEBHOOK_URL = "https://discord.com/api/webhooks/1388842342336958495/7VIupBtpB7ty-K6_V1ze_87eMXe72VEuZAQSTM0ZIb2oQb0V2OKrJnD2XVj6PyxmlvGv"
+WEBHOOK_URL = os.getenv("WEBHOOK_URL", "")
+REMINDER_ROLE = os.getenv("REMINDER_ROLE_ID", 0)
 
 schedule = [
     {"day": "Monday", "time": "16:00", "tier": "UnderUsed"},
@@ -39,7 +41,7 @@ def send_webhook_message():
     unix_timestamp = int(next_event[0].timestamp())
     tier = next_event[3]
 
-    role_id = 1310224095228465214
+    role_id = REMINDER_ROLE
     role_mention = f"<@&{role_id}>"
 
     message = {

@@ -22,6 +22,7 @@ class User(Base):
 
     pvp_experience: Mapped[str] = mapped_column(sa.Text, nullable=False, server_default="novice")
     timezone_name: Mapped[str] = mapped_column(sa.Text, nullable=True)
+    crew_wars_wins: Mapped[int] = mapped_column(sa.Integer, default=0, server_default=sa.text("0"))
 
     loans: Mapped[List["Loan"]] = relationship("Loan", back_populates="user")
 

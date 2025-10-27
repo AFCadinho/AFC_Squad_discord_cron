@@ -7,7 +7,7 @@ from database.base import Base
 
 if TYPE_CHECKING:
     from .members import User
-    
+
 
 class TournamentMatches(Base):
     __tablename__ = "tournament_matches"
@@ -27,9 +27,11 @@ class TournamentMatches(Base):
         "tournament_participants.id", ondelete="SET NULL"), nullable=True)
     challonge_id: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     round: Mapped[int] = mapped_column(sa.Integer, nullable=False)
-    scheduled_datetime: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
-    completed: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false())
-    winner_participant_id: Mapped[int  | None] = mapped_column(
+    scheduled_datetime: Mapped[datetime | None] = mapped_column(
+        sa.DateTime(timezone=True), nullable=True)
+    completed: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, server_default=sa.false())
+    winner_participant_id: Mapped[int | None] = mapped_column(
         sa.ForeignKey("tournament_participants.id", ondelete="SET NULL"),
         nullable=True)
     score: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
@@ -88,6 +90,8 @@ class TournamentParticipants(Base):
     user_id: Mapped[int] = mapped_column(sa.ForeignKey(
         "users.id", ondelete="CASCADE"), nullable=False)
     challonge_id: Mapped[int] = mapped_column(sa.Integer, nullable=True)
+    reward_received: Mapped[bool] = mapped_column(
+        sa.Boolean, server_default=sa.false())
 
     tournament_link: Mapped["Tournament"] = relationship(
         back_populates="participant_rows"
@@ -132,7 +136,6 @@ class Tournament(Base):
         sa.Boolean, server_default=sa.false())
     winner_id: Mapped[int] = mapped_column(
         sa.ForeignKey("users.id"), nullable=True)
-
 
     winner: Mapped["User"] = relationship(
         back_populates="won_tournaments"
