@@ -14,9 +14,10 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import aliased
 from database.database import Session
 from database.models import Tournament, User, TournamentParticipants, TournamentMatches
-from helpers import country_to_timezone, discord_id_to_member, participant_id_to_member, log_command_error, create_new_round_message, ChannelFactory, ChannelManager, ChannelDestroyer
+from helpers import country_to_timezone, discord_id_to_member, participant_id_to_member, log_command_error, create_new_round_message, create_winner_message, ChannelFactory, ChannelManager, ChannelDestroyer
 from zoneinfo import ZoneInfo
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+
 
 # Global Variable
 USERNAME = os.getenv("CH_USERNAME")
@@ -98,22 +99,29 @@ class Tournaments(commands.Cog):
 
     # Static Methods ---------------------------------
     @staticmethod
-    def __check_uncompleted_matches(session, tournament_id: int, current_round: int, max_round: int):
-        # Build the set of rounds we want to check
-        rounds = [current_round]
-        if current_round == max_round:
-            rounds.append(0)  # include bronze (round 0) alongside the final
+    def __get_final_match(session, tournament_id, tournament_round, limit=1):
+        stmt = (
+                select(TournamentMatches)
+                .where(
+                    TournamentMatches.tournament_id == tournament_id,
+                    TournamentMatches.round == tournament_round,
+                    TournamentMatches.completed.is_(True)
+                )
+            )
+        return session.scalars(stmt).first()
+    
+    @staticmethod
+    def __check_uncompleted_matches(session, tournament_id: int, current_round: int):
 
         stmt = (
             select(TournamentMatches)
             .where(
                 TournamentMatches.tournament_id == tournament_id,
-                TournamentMatches.completed.is_(False), 
-                TournamentMatches.round.in_(rounds)
+                TournamentMatches.completed.is_(False),
+                TournamentMatches.round == current_round
             )
         )
-        return list(session.scalars(stmt))
-
+        return session.scalars(stmt).all()
 
     @staticmethod
     def __winner_reported(discord_id1, discord_id2, discord_id_winner) -> bool:
@@ -357,66 +365,127 @@ class Tournaments(commands.Cog):
             )
 
     # HELPER FUNCTIONS
+    async def finalize_tournament(self, session, tournament_id, guild: discord.Guild):
+        # get bronze bronze
+        bronze_match = self.__get_final_match(session, tournament_id, tournament_round=0)
 
-    async def _setup_next_round(self, session, tournament_id, current_round, guild: discord.Guild):
-        if not guild or not self.current_tournament:
+        # get final match
+        final_match = self.__get_final_match(session, tournament_id, tournament_round=self.max_round)
+
+        if not bronze_match or not final_match:
+            log.info(f"FUNCTION: finalize_tournament\nERROR: Either no Bronze Match or No Final Match completed")
             return
         
-        if not isinstance(self.current_round, int):
-            return
+        bronze_winner = participant_id_to_member(session, tournament_id, bronze_match.winner_participant_id)
+        bronze_loser_id = bronze_match.participant1_id if bronze_match.participant2_id == bronze_match.winner_participant_id else bronze_match.participant2_id
+        bronze_loser = participant_id_to_member(session, tournament_id, bronze_loser_id)
+        
+        finals_winner = participant_id_to_member(session, tournament_id, final_match.winner_participant_id)
+        finals_loser_id = final_match.participant1_id if final_match.participant2_id == final_match.winner_participant_id else final_match.participant2_id
+        finals_loser = participant_id_to_member(session, tournament_id, finals_loser_id)
 
-        # BRONZE MATCH
-        has_bronze_match = session.scalar(
-        select(func.count()).select_from(TournamentMatches).where(
-                TournamentMatches.tournament_id == tournament_id,
-                TournamentMatches.round == 0
-            )
-        ) > 0
+        user1 = guild.get_member(finals_winner.discord_id)
+        user2 = guild.get_member(finals_loser.discord_id)
+        user3 = guild.get_member(bronze_winner.discord_id)
+        user4 = guild.get_member(bronze_loser.discord_id)
 
-        # TOURNAMENT END
-        if current_round == self.max_round and not has_bronze_match:
-            announcement_channel = guild.get_channel(ANNOUNCEMENT_CH)
-            if announcement_channel and isinstance(announcement_channel, discord.TextChannel):
-                await announcement_channel.send("🏁 The tournament has finished! Congratulations to the winner! 🏆")
+        if not user1 or not user2 or not user3 or not user4:
+            log.info(f"FUNCTION: finalize_tournament\nError: No discord Member for all members.")
             return
         
-        await self.channel_destroyer.delete_channels(guild, MATCHES_CATEGORY)
+        announcement_channel = guild.get_channel(ANNOUNCEMENT_CH)
+        if isinstance(announcement_channel, discord.TextChannel):
+            msg = create_winner_message(self.current_tournament or "", user1, user2, user3, user4)
+            await announcement_channel.send(msg)
 
-        if current_round != 0:
-            self.current_round = current_round + 1
-
+    async def check_all_played(self, session, tournament_id):
+        if not self.current_tournament:
+            return
 
         stmt = (
             select(TournamentMatches)
             .where(
                 TournamentMatches.tournament_id == tournament_id,
-                TournamentMatches.round == self.current_round
+                TournamentMatches.completed.is_(False),
             )
         )
+        unplayed_matches = session.scalars(stmt).all()
+        return len(unplayed_matches) == 0
 
+    async def _setup_bronze_match(self, session, tournament_id, guild: discord.Guild):
+        if not guild or not self.current_tournament:
+            return
+
+        stmt = (
+            select(TournamentMatches)
+            .where(
+                TournamentMatches.tournament_id == tournament_id,
+                TournamentMatches.round == 0
+            )
+        )
+        bronze_match = session.scalars(stmt).first()
+        if not bronze_match:
+            return
+
+        user1 = participant_id_to_member(
+            session, bronze_match.tournament_id, bronze_match.participant1_id)
+        user2 = participant_id_to_member(
+            session, bronze_match.tournament_id, bronze_match.participant2_id)
+        channel_name = await self.channel_factory.tournament_match(guild, [user1, user2], MATCHES_CATEGORY, bronze_match.round)
+        return channel_name
+
+    async def _setup_next_round(self, session, tournament_id, current_round, guild: discord.Guild):
+        if not guild or not self.current_tournament or not self.max_round:
+            log.info("FUNCTION: _setup_next_round\nERROR: Didn't pass first check")
+            return
+        if not isinstance(current_round, int):
+            log.info(
+                "FUNCTION: _setup_next_round\nError: current round is not an instance of type int")
+            return
+
+        next_round = current_round + 1
+
+        # Fetch matches for next_round
+        stmt = select(TournamentMatches).where(
+            TournamentMatches.tournament_id == tournament_id,
+            TournamentMatches.round == next_round
+        )
         tournament_matches = session.scalars(stmt).all()
-        channels = []
+
+        if not tournament_matches:
+            log.info(
+                f"[next_round] No matches for round {next_round}; t_id={tournament_id}")
+            return
+
+        # Update state
+        self.current_round = next_round
+        log.info(
+            f"FUNCTION: _setup_next_round\nself.current round is now: {self.current_round} ")
+
+        created = 0
         for match in tournament_matches:
-            if not match:
-                return
             user1 = participant_id_to_member(
                 session, match.tournament_id, match.participant1_id)
             user2 = participant_id_to_member(
                 session, match.tournament_id, match.participant2_id)
             if not user1 or not user2:
-                log.info(f"[next_round] Skipping match {match.challonge_id}: p1={match.participant1_id}, p2={match.participant2_id}")
+                log.info(
+                    f"[next_round] Skipping match {match.challonge_id}: p1={match.participant1_id}, p2={match.participant2_id}")
                 continue
 
-            channel_name = await self.channel_factory.tournament_match(guild, [user1, user2], MATCHES_CATEGORY)
-            channels.append(channel_name)
+            channel_name = await self.channel_factory.tournament_match(guild, [user1, user2], MATCHES_CATEGORY, match.round)
+            if channel_name:
+                created += 1
 
-        
-        # Next Round Announcement
-        announcement_channel = guild.get_channel(ANNOUNCEMENT_CH)
-        if announcement_channel and isinstance(announcement_channel, discord.TextChannel):
-            new_round_announcement = create_new_round_message(
-                current_round, self.current_round, self.current_tournament)
-            await announcement_channel.send(new_round_announcement)
+        if created:
+            announcement_channel = guild.get_channel(ANNOUNCEMENT_CH)
+            if isinstance(announcement_channel, discord.TextChannel):
+                msg = create_new_round_message(
+                    current_round, self.current_round, self.max_round, self.current_tournament)
+                await announcement_channel.send(msg)
+        else:
+            log.info(
+                f"[next_round] No channels created for round {next_round} (all matches skipped?)")
 
     async def _post_schedule_embed(self, dt, player1, player2, round, schedule_channel, bracket_url):
 
@@ -624,6 +693,28 @@ class Tournaments(commands.Cog):
             )
             session.add(tournament_match)
 
+    @app_commands.command(name="get_max_round", description="Fetch the max round number of the current Tournament")
+    @app_commands.default_permissions(administrator=True)
+    async def get_max_round(self, interaction: discord.Interaction):
+        max_round = self.max_round
+        if not self.current_round:
+            await interaction.response.send_message(f"There is either no tournament running or the tournament hasn't started {max_round}", ephemeral=True)
+
+        await interaction.response.send_message(f"The max round number is: {max_round}", ephemeral=True)
+
+    @app_commands.command(name="set_max_round", description="Set the max round number of the current Tournament")
+    @app_commands.default_permissions(administrator=True)
+    async def set_max_round(self, interaction: discord.Interaction, max_round: str):
+        if not max_round.isdigit():
+            await interaction.response.send_message(f"Please enter a digit. e.g. 69", ephemeral=True)
+            return
+
+        self.max_round = int(max_round)
+        if not self.current_tournament:
+            await interaction.response.send_message(f"There is currently no tournament running", ephemeral=True)
+
+        await interaction.response.send_message(f"The max round number is: {self.current_round}", ephemeral=True)
+
     @app_commands.command(name="get_current_round", description="Fetch the current round number of the current Tournament")
     @app_commands.default_permissions(administrator=True)
     async def get_current_round(self, interaction: discord.Interaction):
@@ -636,7 +727,10 @@ class Tournaments(commands.Cog):
     @app_commands.command(name="set_current_round", description="Set the current round number of the current Tournament")
     @app_commands.default_permissions(administrator=True)
     async def set_current_round(self, interaction: discord.Interaction, match_round: str):
-        self.current_round = match_round
+        if not match_round.isdigit():
+            await interaction.response.send_message(f"Please enter a digit. e.g. 69", ephemeral=True)
+            return
+        self.current_round = int(match_round)
         if not self.current_tournament:
             await interaction.response.send_message(f"There is currently no tournament running", ephemeral=True)
 
@@ -1119,7 +1213,7 @@ class Tournaments(commands.Cog):
 
     # Matches
     @app_commands.command(name="report_win", description="Report who won your match")
-    async def report_win(self, interaction: discord.Interaction, winner: discord.Member, video_link: str):
+    async def report_win(self, interaction: discord.Interaction, winner: discord.Member, video_link: Optional[str]):
         if interaction.channel_id != int(REPORTS_CH):
             await interaction.response.send_message(
                 embed=self.build_simple_embed(
@@ -1128,26 +1222,31 @@ class Tournaments(commands.Cog):
             )
             return
 
-        if not video_link:
-            await interaction.response.send_message(
-                embed=self.build_simple_embed(
-                    "❌ Missing Video", "Please provide a video link of the battle.", discord.Color.red()),
-                ephemeral=True
-            )
-            return
+        if video_link:
+            if not validators.url(video_link):
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed(
+                        "❌ Invalid Link",
+                        "Please provide a valid http/https video URL.\n"
+                        "Examples:\n• https://youtu.be/xxxx\n• https://streamable.com/xxxx\n• https://limewire.com/xxxx",
+                        discord.Color.red()
+                    ),
+                    ephemeral=True
+                )
 
-        if not validators.url(video_link):
-            await interaction.response.send_message(
-                embed=self.build_simple_embed(
-                    "❌ Invalid Link",
-                    "Please provide a valid http/https video URL.\n"
-                    "Examples:\n• https://youtu.be/xxxx\n• https://streamable.com/xxxx\n• https://limewire.com/xxxx",
-                    discord.Color.red()
-                ),
-                ephemeral=True
-            )
+        if self.current_round is None or self.max_round is None:
+            log.info(f"COMMAND: report_win\nERROR: No self.current_round or self.max_round set")
             return
-
+        
+        if self.max_round - self.current_round == 1 or self.max_round == self.current_round:
+                if not video_link:
+                    await interaction.response.send_message(
+                    embed=self.build_simple_embed(
+                        "❌ Error", "Semi Finals and Finals require Video Proof. Please add a video link", discord.Color.red()),
+                    ephemeral=True
+                    )
+                    return
+        
         slug = slugify(self.current_tournament)
         reporter_discord = interaction.user
         reporter_discord_id = reporter_discord.id
@@ -1293,15 +1392,36 @@ class Tournaments(commands.Cog):
                 log.info(f"This is a Bronze Match")
                 await self.channel_factory.tournament_rewards(interaction.guild, [crew_member1, crew_member2], REWARDS_CATEGORY, slug)
 
-
             if not self.max_round:
                 return
-            
+
             uncompleted_matches = self.__check_uncompleted_matches(
-                session, next_match_row.tournament_id, next_match_row.round, self.max_round)
+                session, next_match_row.tournament_id, next_match_row.round)
 
             if len(uncompleted_matches) == 0:
-                await self._setup_next_round(session, next_match_row.tournament_id, next_match_row.round, interaction.guild)
+                log.info(
+                    f"COMMAND: report_win\nThe current round is: {next_match_row.round}\nThe Max round is: {self.max_round}")
+                # Semi Finals when bronze match needs to be created
+                if self.max_round - next_match_row.round == 1:
+                    await self.channel_destroyer.delete_channels(interaction.guild, MATCHES_CATEGORY)
+                    await self._setup_bronze_match(session, next_match_row.tournament_id, interaction.guild)
+                    await self._setup_next_round(session, next_match_row.tournament_id, next_match_row.round, interaction.guild)
+
+                # Finals or Bronze match
+                elif next_match_row.round == self.max_round or next_match_row.round == 0:
+                    log.info(f"COMMAND: report_win\nBronze or Final Match detected. Checking if all matches are played...")
+                    if not await self.check_all_played(session, next_match_row.tournament_id):
+                        await interaction.followup.send(embed=announce, ephemeral=True)
+                        return
+
+                    # Finalize tournament
+                    log.info(f"COMMAND: report_win\nAll Matches have been played. Setting up announcement")
+                    await self.finalize_tournament(session, next_match_row.tournament_id, interaction.guild)
+                    await interaction.followup.send(f"All Rounds have been played. Tournament can be closed.", ephemeral=True)
+
+                else:
+                    await self.channel_destroyer.delete_channels(interaction.guild, MATCHES_CATEGORY)
+                    await self._setup_next_round(session, next_match_row.tournament_id, next_match_row.round, interaction.guild)
 
             await interaction.followup.send(embed=announce, ephemeral=True)
 
@@ -1436,6 +1556,7 @@ class Tournaments(commands.Cog):
                     match_row.score = score_challonge_match if score_challonge_match else None
 
                     match_row.completed = True if match["state"] == "complete" else False
+                    self.current_round = fetch_current_round()
 
             except challonge.api.ChallongeException:
                 await interaction.response.send_message(

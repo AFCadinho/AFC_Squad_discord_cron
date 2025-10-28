@@ -39,13 +39,18 @@ class TournamentInfo(commands.Cog):
 
                 "🏁 **Report Matches**\n"
                 f"• Winners report in <#{REPORTS_CH}> with `/report_win`\n"
-                "• Write the winner’s @ and add a **video link**\n"
-                "• Example: `/report_win winner:@Username video_link:https://...`\n\n"
+                "• **Semifinals & Final:** include a **video link** (required)\n"
+                "• **Earlier rounds:** video link is **optional**\n"
+                "• Examples:\n"
+                "  • Early rounds: `/report_win winner:@Username`\n"
+                "  • Semis/Final: `/report_win winner:@Username video_link:https://...`\n\n"
 
-                "🎥 **Video Proof**\n"
-                "- You must record every match\n"
-                "- Upload your battle and send a link where it can be watched (YouTube, LimeWire, etc.)\n"
-                "- 🔒 Only **@afc_adinho** will see your videos. Nobody else\n\n"
+                "🎥 **Video Proof & Visibility**\n"
+                "- From the **Semifinals onward**, you **must** submit a video link (YouTube, Streamable, LimeWire, etc.)\n"
+                "- **Semifinals & Final VODs will be shown to our members** in the server\n"
+                "- For earlier rounds, recording is **recommended** but not required\n"
+                "- Submitted early-round videos may be used for **coaching and match reviews** to help players improve\n\n"
+
                 "📖 Recording Guide: [Click Here](https://discord.com/channels/1302588750630621184/1423922709108363285/1423935057382604883)\n"
                 "📤 Upload Guide: [Click Here](https://discord.com/channels/1302588750630621184/1423922709108363285/1423944853762605086)\n\n"
 
@@ -81,11 +86,16 @@ class TournamentInfo(commands.Cog):
                 "🔌 **Disconnects**\n"
                 "• In PBO, if you disconnect, the game closes and you lose instantly\n"
                 "• Because of this, a disconnect always counts as a loss\n"
-                "• Video proof is required to confirm who disconnected\n\n"
+                "• Match History will decide who won\n\n"
 
                 "📊 **Reporting Results**\n"
-                "• Winners must report the match result in the report channel\n"
+                f"• Winners must report the match result in the <#{REPORTS_CH}> channel\n"
                 "• 🚨 Reporting a false score (claiming a win when you did not win) means instant disqualification\n\n"
+
+                "🎥 **Video Proof (Semifinals & Finals)**\n"
+                "• From the **Semifinals onward**, all matches **must be recorded** and a video link must be submitted\n"
+                "• If no video proof is provided, the match **must be replayed**\n"
+                "• Ensure your recording clearly shows both teams and the battle result\n\n"
 
                 "⏳ **Rounds**\n"
                 "• All tournaments are **Single Elimination**\n"
@@ -108,7 +118,6 @@ class TournamentInfo(commands.Cog):
             color=discord.Color.red()
         )
         await interaction.response.send_message(embed=embed)
-
 
     # === Rewards Info ===
 
@@ -170,8 +179,8 @@ class TournamentInfo(commands.Cog):
 
         await interaction.response.send_message(embed=embed)
 
-
     # === Helper: Sign-up Embed ===
+
     def _signup_embed(self) -> discord.Embed:
         embed = discord.Embed(
             title="📝 Tournament Sign-Up",
@@ -254,7 +263,7 @@ class TournamentInfo(commands.Cog):
         )
         embed.set_footer(text="Only one schedule per match is needed.")
         return embed
-    
+
     @app_commands.command(name="post_scheduling_embed", description="Post the scheduling help embed in the scheduling channel")
     @app_commands.default_permissions(administrator=True)
     async def post_scheduling_embed(self, interaction: discord.Interaction):
@@ -266,8 +275,6 @@ class TournamentInfo(commands.Cog):
             await interaction.response.send_message("Scheduling embed posted.", ephemeral=True)
         else:
             await interaction.response.send_message("Couldn’t find the scheduling channel.", ephemeral=True)
-
-
 
 
 async def setup(bot: commands.Bot):

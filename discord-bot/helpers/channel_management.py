@@ -3,6 +3,7 @@ import logging
 
 log = logging.getLogger(__name__)
 
+
 class ChannelFactory:
     def __init__(self, bot) -> None:
         self.bot = bot
@@ -16,23 +17,23 @@ class ChannelFactory:
             return None
 
         if category_id:
-            discord_category = discord.utils.get(guild.categories, id=category_id)
+            discord_category = discord.utils.get(
+                guild.categories, id=category_id)
             text_channel = await guild.create_text_channel(channel_name, category=discord_category)
         else:
             return
 
         return text_channel
 
-    async def tournament_match(self, guild: discord.Guild, users: list, category_id):
+    async def tournament_match(self, guild: discord.Guild, users: list, category_id, match_round):
         if len(users) != 2:
             return False
-        
+
         if not guild:
             return None
-        
+
         discord_id1 = users[0].discord_id
         discord_id2 = users[1].discord_id
-
 
         discord_user1 = guild.get_member(discord_id1)
         discord_user2 = guild.get_member(discord_id2)
@@ -40,21 +41,32 @@ class ChannelFactory:
         if not discord_user1 or not discord_user2:
             return None
 
-        
         channel_name = f"{discord_user1.display_name}-vs-{discord_user2.display_name}"
         text_channel = await self._base(guild, channel_name, category_id)
         if text_channel:
+            await text_channel.send(
+                f"🎯 **Match Channel Created — Round {match_round}!**\n\n"
+                f"**{discord_user1.mention}** 🆚 **{discord_user2.mention}**\n\n"
+                "📅 **What to do next:**\n"
+                "• Discuss and agree on a time for your match.\n"
+                "• Once confirmed, schedule it with:\n"
+                "```/schedule_match opponent:<@opponent> match_round:<round> year:<yyyy> month:<mm> day:<dd> hour:<hh> minute:<mm>```\n"
+                "• Please schedule **before next Wednesday**.\n\n"
+                "🏆 After your battle, the winner should report the result using:\n"
+                "```/report_win winner:<@winner> video_link:<link>```\n\n"
+                "Good luck to both players — may the best trainer win! ⚔️"
+            )
+
             return text_channel.name
-        
+
         return None
-    
 
     async def tournament_rewards(self, guild: discord.Guild, users: list, category_id, slug):
         if not guild:
             return
-        
+
         text_channels = []
-        
+
         for user in users:
             discord_user = guild.get_member(user.discord_id)
             if not discord_user:
@@ -62,11 +74,13 @@ class ChannelFactory:
 
             channel_name = f"{discord_user.display_name}-reward-{slug}"
 
-            existing_channel = discord.utils.get(guild.text_channels, name=channel_name)
+            existing_channel = discord.utils.get(
+                guild.text_channels, name=channel_name)
             if existing_channel:
                 text_channels.append(existing_channel)
-                log.info(f"Skipping channel creation. Reason: Reward Channel already exists for user {user.username}.")
-                continue 
+                log.info(
+                    f"Skipping channel creation. Reason: Reward Channel already exists for user {user.username}.")
+                continue
 
             text_channel = await self._base(guild, channel_name, category_id)
 
@@ -91,7 +105,7 @@ class ChannelManager:
         discord_category = discord.utils.get(guild.categories, id=category_id)
         if not discord_category:
             return []
-        
+
         channels = discord_category.channels
 
         return channels
@@ -104,7 +118,7 @@ class ChannelManager:
             channel_names.append(channel.name)
 
         return channel_names
-    
+
 
 class ChannelDestroyer:
     def __init__(self, bot) -> None:
@@ -117,11 +131,11 @@ class ChannelDestroyer:
         discord_category = discord.utils.get(guild.categories, id=category_id)
         if not discord_category:
             return []
-        
+
         channels = discord_category.channels
 
         return channels
-    
+
     async def delete_channels(self, guild: discord.Guild, category_id):
         channels = await self.__get_category_channels(guild, category_id)
         for channel in channels:
