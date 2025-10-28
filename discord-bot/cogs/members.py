@@ -1,10 +1,10 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
-# from database.models import User
 from database.database import Session
 from helpers import get_timezones, discord_id_to_member
 from zoneinfo import ZoneInfo
+from helpers import discord_id_to_member
 
 MAX_CHOICES = 25
 
@@ -56,7 +56,7 @@ class Member(commands.Cog):
         with Session.begin() as session:
             crew_member = discord_id_to_member(session, interaction.user.id)
             if not crew_member:
-                await interaction.response.send_message(f"You are not registered in our database. Please contact management" , ephemeral=True)
+                await interaction.response.send_message(f"You are not registered in our database. Please contact management", ephemeral=True)
                 return
 
             country_name = crew_member.country
@@ -83,6 +83,30 @@ class Member(commands.Cog):
     @set_timezone.autocomplete("timezone_name")
     async def autocomplete_set_timezone(self, interaction: discord.Interaction, current: str):
         return await self.autocomplete_timezone_name(interaction, current)
+
+    @app_commands.command(name="update_wins_cw", description="Update the amount of Crew Wars Victories you have")
+    async def update_wins_cw(self, interaction: discord.Interaction, wins: str):
+        discord_id = interaction.user.id
+
+        with Session.begin() as session:
+            crew_member = discord_id_to_member(session, discord_id)
+
+            if not crew_member:
+                await interaction.response.send_message(f"You are not registered in the database. Please contact staff", ephemeral=True)
+                return
+
+            if not wins.isdigit():
+                await interaction.response.send_message(f"The amount of wins has to be a digit. e.g. 69", ephemeral=True)
+                return
+
+            new_wins_amount = int(wins)
+            current_wins = crew_member.crew_wars_wins
+            if new_wins_amount < current_wins:
+                await interaction.response.send_message(f"The amount of wins has to be greater than the current amount of wins.\nCurrent wins: {current_wins}", ephemeral=True)
+                return
+
+            crew_member.crew_wars_wins = new_wins_amount
+            await interaction.response.send_message(f"{crew_member.username}'s Crew Wars Victories successfully updated\nOld Value: {current_wins}\nNew Value: {new_wins_amount}", ephemeral=True)
 
 
 async def setup(bot: commands.Bot):

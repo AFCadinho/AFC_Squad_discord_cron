@@ -1243,8 +1243,10 @@ class Tournaments(commands.Cog):
             next_match_row.score = score
             next_match_row.completed = True
 
+            # Next Match Winner
             await self.__prep_next_match_winner(session, slug, winning_participant.challonge_id)
 
+            # Next Match Loser
             losing_participant = participant1 if participant2 == winning_participant else participant2
             await self.__prep_next_match_winner(session, slug, losing_participant.challonge_id)
 
@@ -1294,6 +1296,7 @@ class Tournaments(commands.Cog):
 
             if not self.max_round:
                 return
+            
             uncompleted_matches = self.__check_uncompleted_matches(
                 session, next_match_row.tournament_id, next_match_row.round, self.max_round)
 
