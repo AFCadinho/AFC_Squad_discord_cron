@@ -1,13 +1,19 @@
-# Crew Wars reminders - 5 minutes before each event (UTC time)
-55 15 * * 1 cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
-55 09 * * 3 cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
-55 19 * * 3 cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
-55 19 * * 4 cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
-55 02 * * 6 cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
-55 00 * * 0 cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
-55 17 * * 0 cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+CRON_TZ=UTC
 
-# Crew wars Wins check in
-55 22 1 * * cd /app && /usr/local/bin/poetry run python3 wins_tracker.py >> /var/log/cron.log 2>&1
-55 22 14 * * cd /app && /usr/local/bin/poetry run python3 wins_tracker.py >> /var/log/cron.log 2>&1
-55 22 28 * * cd /app && /usr/local/bin/poetry run python3 wins_tracker.py >> /var/log/cron.log 2>&1
+# Crew Wars reminders - 5 minutes before each event (UTC time)
+55 15 * * 1 . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
+55 09 * * 3 . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
+55 19 * * 3 . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
+55 19 * * 4 . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
+55 02 * * 6 . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
+55 00 * * 0 . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
+55 17 * * 0 . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
+
+# Crew wars Wins check in (UTC)
+55 22 1 * *  . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 wins_tracker.py >> /var/log/cron.log 2>&1
+55 22 14 * * . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 wins_tracker.py >> /var/log/cron.log 2>&1
+55 22 28 * * . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 wins_tracker.py >> /var/log/cron.log 2>&1
+
+

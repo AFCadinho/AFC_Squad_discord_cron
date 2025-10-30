@@ -365,6 +365,70 @@ class Tournaments(commands.Cog):
             )
 
     # HELPER FUNCTIONS
+    async def update_discord_channels(self, current_round, guild: discord.Guild, winning_member, members: list):
+        if len(members) != 2:
+            log.info(f"FUNCTION: update_discord_channels\nERROR: The length of members is NOT 2.")
+            return
+        
+        crew_member1 = members[0]
+        crew_member2 = members[1]
+        winning_crew_member = winning_member
+        
+        # Round Conditions
+        slug = self.current_tournament
+        is_semi_final = (self.max_round - current_round == 1)
+        is_final = (self.max_round == current_round)
+        is_bronze_match = (current_round == 0)
+        slug = self.current_tournament
+
+        if is_semi_final:
+            pass
+        elif is_bronze_match:
+            log.info(f"This is a Bronze Match")
+            await self.channel_factory.tournament_rewards(guild, [crew_member1, crew_member2], REWARDS_CATEGORY, slug)
+        elif is_final:
+            log.info(f"This is a Finals Match")
+            await self.channel_factory.tournament_rewards(guild, [crew_member1, crew_member2], REWARDS_CATEGORY, slug)
+        else:
+            log.info(f"Not a Bronze Match")
+            losing_crew_member = crew_member1 if crew_member1 != winning_crew_member else crew_member2
+            await self.channel_factory.tournament_rewards(guild, [losing_crew_member], REWARDS_CATEGORY, slug)
+
+
+    async def check_if_finished(self, session, current_round, guild: discord.Guild, tournament_id, winning_member, members: list):
+        await self.update_discord_channels(current_round, guild, winning_member, members)
+
+        uncompleted_matches = self.__check_uncompleted_matches(
+            session, tournament_id, current_round)
+
+        if len(uncompleted_matches) == 0:
+            log.info(
+                f"COMMAND: report_win\nThe current round is: {current_round}\nThe Max round is: {self.max_round}")
+            # Semi Finals when bronze match needs to be created
+            if self.max_round - current_round == 1:
+                await self.channel_destroyer.delete_channels(guild, MATCHES_CATEGORY)
+                await self._setup_bronze_match(session, tournament_id, guild)
+                await self._setup_next_round(session, tournament_id, current_round, guild)
+
+            # Finals or Bronze match
+            elif current_round == self.max_round or current_round == 0:
+                log.info(f"COMMAND: report_win\nBronze or Final Match detected. Checking if all matches are played...")
+                if not await self.check_all_played(session, tournament_id):
+                    log.info(f"COMMAND: report_win\nNot All Matches have been played yet.")
+                    return False
+
+                # Finalize tournament
+                log.info(f"COMMAND: report_win\nAll Matches have been played. Setting up announcement")
+                await self.finalize_tournament(session, tournament_id, guild)
+                return True
+
+            else:
+                await self.channel_destroyer.delete_channels(guild, MATCHES_CATEGORY)
+                await self._setup_next_round(session, tournament_id, current_round, guild)
+                return False
+
+
+    
     async def finalize_tournament(self, session, tournament_id, guild: discord.Guild):
         # get bronze bronze
         bronze_match = self.__get_final_match(session, tournament_id, tournament_round=0)
@@ -431,6 +495,7 @@ class Tournaments(commands.Cog):
             session, bronze_match.tournament_id, bronze_match.participant1_id)
         user2 = participant_id_to_member(
             session, bronze_match.tournament_id, bronze_match.participant2_id)
+        log.info(f"FUNCTION: _setup_bronze_match\nDEBUG: user1: {user1.username}\nuser2: {user2.username}")
         channel_name = await self.channel_factory.tournament_match(guild, [user1, user2], MATCHES_CATEGORY, bronze_match.round)
         return channel_name
 
@@ -1383,46 +1448,62 @@ class Tournaments(commands.Cog):
                 )
                 return
 
-            if (self.current_round != 0 and self.current_round != self.max_round):
-                log.info(f"Not a Bronze Match")
-                losing_crew_member = crew_member1 if crew_member1 != winning_crew_member else crew_member2
-                await self.channel_factory.tournament_rewards(interaction.guild, [losing_crew_member], REWARDS_CATEGORY, slug)
+            # # Round Conditions
+            # is_semi_final = (self.max_round - next_match_row.round == 1)
+            # is_final = (self.max_round == next_match_row.round)
+            # is_bronze_match = (next_match_row.round == 0)
 
-            if (self.current_round == 0 or self.current_round == self.max_round):
-                log.info(f"This is a Bronze Match")
-                await self.channel_factory.tournament_rewards(interaction.guild, [crew_member1, crew_member2], REWARDS_CATEGORY, slug)
+            # if is_semi_final:
+            #     pass
+            # elif is_bronze_match:
+            #     log.info(f"This is a Bronze Match")
+            #     await self.channel_factory.tournament_rewards(interaction.guild, [crew_member1, crew_member2], REWARDS_CATEGORY, slug)
+            # elif is_final:
+            #     log.info(f"This is a Finals Match")
+            #     await self.channel_factory.tournament_rewards(interaction.guild, [crew_member1, crew_member2], REWARDS_CATEGORY, slug)
+            # else:
+            #     log.info(f"Not a Bronze Match")
+            #     losing_crew_member = crew_member1 if crew_member1 != winning_crew_member else crew_member2
+            #     await self.channel_factory.tournament_rewards(interaction.guild, [losing_crew_member], REWARDS_CATEGORY, slug)
 
-            if not self.max_round:
-                return
+            # uncompleted_matches = self.__check_uncompleted_matches(
+            #     session, next_match_row.tournament_id, next_match_row.round)
 
-            uncompleted_matches = self.__check_uncompleted_matches(
-                session, next_match_row.tournament_id, next_match_row.round)
+            # if len(uncompleted_matches) == 0:
+            #     log.info(
+            #         f"COMMAND: report_win\nThe current round is: {next_match_row.round}\nThe Max round is: {self.max_round}")
+            #     # Semi Finals when bronze match needs to be created
+            #     if self.max_round - next_match_row.round == 1:
+            #         await self.channel_destroyer.delete_channels(interaction.guild, MATCHES_CATEGORY)
+            #         await self._setup_bronze_match(session, next_match_row.tournament_id, interaction.guild)
+            #         await self._setup_next_round(session, next_match_row.tournament_id, next_match_row.round, interaction.guild)
 
-            if len(uncompleted_matches) == 0:
-                log.info(
-                    f"COMMAND: report_win\nThe current round is: {next_match_row.round}\nThe Max round is: {self.max_round}")
-                # Semi Finals when bronze match needs to be created
-                if self.max_round - next_match_row.round == 1:
-                    await self.channel_destroyer.delete_channels(interaction.guild, MATCHES_CATEGORY)
-                    await self._setup_bronze_match(session, next_match_row.tournament_id, interaction.guild)
-                    await self._setup_next_round(session, next_match_row.tournament_id, next_match_row.round, interaction.guild)
+            #     # Finals or Bronze match
+            #     elif next_match_row.round == self.max_round or next_match_row.round == 0:
+            #         log.info(f"COMMAND: report_win\nBronze or Final Match detected. Checking if all matches are played...")
+            #         if not await self.check_all_played(session, next_match_row.tournament_id):
+            #             log.info(f"COMMAND: report_win\nNot All Matches have been played yet.")
+            #             await interaction.followup.send(embed=announce, ephemeral=True)
+            #             return
 
-                # Finals or Bronze match
-                elif next_match_row.round == self.max_round or next_match_row.round == 0:
-                    log.info(f"COMMAND: report_win\nBronze or Final Match detected. Checking if all matches are played...")
-                    if not await self.check_all_played(session, next_match_row.tournament_id):
-                        await interaction.followup.send(embed=announce, ephemeral=True)
-                        return
+            #         # Finalize tournament
+            #         log.info(f"COMMAND: report_win\nAll Matches have been played. Setting up announcement")
+            #         await self.finalize_tournament(session, next_match_row.tournament_id, interaction.guild)
+            #         await interaction.followup.send(f"All Rounds have been played. Tournament can be closed.", ephemeral=True)
 
-                    # Finalize tournament
-                    log.info(f"COMMAND: report_win\nAll Matches have been played. Setting up announcement")
-                    await self.finalize_tournament(session, next_match_row.tournament_id, interaction.guild)
-                    await interaction.followup.send(f"All Rounds have been played. Tournament can be closed.", ephemeral=True)
+            #     else:
+            #         await self.channel_destroyer.delete_channels(interaction.guild, MATCHES_CATEGORY)
+            #         await self._setup_next_round(session, next_match_row.tournament_id, next_match_row.round, interaction.guild)
 
-                else:
-                    await self.channel_destroyer.delete_channels(interaction.guild, MATCHES_CATEGORY)
-                    await self._setup_next_round(session, next_match_row.tournament_id, next_match_row.round, interaction.guild)
-
+            is_finished = await self.check_if_finished(session, next_match_row.round, interaction.guild, next_match_row.tournament_id, winning_crew_member, [crew_member1, crew_member2])
+            if is_finished == True:
+                try:
+                    log_ch = self.bot.get_channel(LOGS_CH) or await self.bot.fetch_channel(LOGS_CH)
+                    if log_ch:
+                        await log_ch.send(f"All Rounds have been played. Tournament '{self.current_tournament}' can be closed.")
+                except Exception:
+                    pass
+            
             await interaction.followup.send(embed=announce, ephemeral=True)
 
     @app_commands.command(name="update_match", description="Update the score of a match")
@@ -1504,15 +1585,29 @@ class Tournaments(commands.Cog):
                 )
                 return
 
-        msg = f"Match successfully updated. Winner: **{winner.display_name}**."
-        if not ok:
-            msg += "\n\n⚠️ Could not find and update winner’s next match."
+            if not interaction.guild:
+                log.info(f"COMMAND: update_match\nERROR: interaction.guild is None")
+                return
+            
+            log.info(f"COMMAND: update_match\nDEBUG: crew member1: {crew_member1.discord_id}\ncrew member2: {crew_member2.discord_id}")
+            is_finished = await self.check_if_finished(session, current_match.round, interaction.guild, current_match.tournament_id, winning_crew_member, [crew_member1, crew_member2])
+            if is_finished == True:
+                try:
+                    log_ch = self.bot.get_channel(LOGS_CH) or await self.bot.fetch_channel(LOGS_CH)
+                    if log_ch:
+                        await log_ch.send(f"All Rounds have been played. Tournament '{self.current_tournament}' can be closed.")
+                except Exception:
+                    pass
+            
+            msg = f"Match successfully updated. Winner: **{winner.display_name}**."
+            if not ok:
+                msg += "\n\n⚠️ Could not find and update winner’s next match."
 
-        await interaction.response.send_message(
-            embed=self.build_simple_embed(
-                "✅ Match Updated", msg, discord.Color.green()),
-            ephemeral=True
-        )
+            await interaction.response.send_message(
+                embed=self.build_simple_embed(
+                    "✅ Match Updated", msg, discord.Color.green()),
+                ephemeral=True
+            )
 
     @app_commands.command(name="sync_db_to_challonge", description="Synchronize the Database to the bracket in Challonge for current tournament")
     @app_commands.default_permissions(administrator=True)
