@@ -21,28 +21,40 @@ def create_winner_message(
     fourth_user: discord.Member | None = None,
     vod_url: str | None = None,
 ) -> str:
-    """Build a final winner announcement message that always uses mentions."""
+    """Build a visually balanced final winner announcement message."""
     formatted_name = tournament_slug.replace("_", " ").title()
     bracket_url = f"https://challonge.com/{tournament_slug}"
 
     lines: list[str] = []
-    lines.append(f"🏁 **{formatted_name}** has finished!\n")
-    lines.append(f"👑 **Champion:** {first_user.mention}")
-    if second_user:
-        lines.append(f"🥈 **Runner-up:** {second_user.mention}")
-    if third_user:
-        lines.append(f"🥉 **Third Place:** {third_user.mention}")
-    if fourth_user:
-        lines.append(f"🎖️ **Fourth Place:** {fourth_user.mention}")
+    lines.append(f"🏁 **{formatted_name}** has concluded!\n")
 
+    # Champion spotlight section
+    lines.append("━━━━━━━━━━━━━━━━━━━━━━━")
+    lines.append("👑 **CHAMPION** 👑")
+    lines.append(f"**{first_user.mention}** 🏆")
+    lines.append("━━━━━━━━━━━━━━━━━━━━━━━\n")
+
+    # Other placements
+    if second_user or third_user or fourth_user:
+        lines.append("**Final Standings:**")
+        if second_user:
+            lines.append(f"🥈 2nd Place — {second_user.mention}")
+        if third_user:
+            lines.append(f"🥉 3rd Place — {third_user.mention}")
+        if fourth_user:
+            lines.append(f"🎖️ 4th Place — {fourth_user.mention}")
+        lines.append("")
+
+    # Optional VOD and bracket links
     if vod_url and validators.url(vod_url):
-        lines.append(f"\n🎥 **Final VOD:** <{vod_url}>")
+        lines.append(f"🎥 **Final VOD:** <{vod_url}>")
 
-    lines.append(f"\n📊 [View the final bracket](<{bracket_url}>)\n")
-    lines.append(
-        "Thanks to everyone who participated — see you in the next tournament! 🎉\n@everyone")
+    lines.append(f"📊 **Bracket:** <{bracket_url}>\n")
+
+    lines.append("Thanks to everyone who participated — see you next time! 🎉\n@everyone")
 
     return "\n".join(lines)
+
 
 
 def create_new_round_message(current_round: int, new_round: int, max_round: int, tournament_slug: str) -> str:
