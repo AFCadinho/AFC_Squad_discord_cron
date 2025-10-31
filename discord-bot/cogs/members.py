@@ -1,10 +1,12 @@
 import discord
+
 from discord.ext import commands
 from discord import app_commands
 from database.database import Session
 from helpers import get_timezones, discord_id_to_member
 from zoneinfo import ZoneInfo
 from helpers import discord_id_to_member
+from datetime import datetime, timezone
 
 MAX_CHOICES = 25
 
@@ -109,7 +111,7 @@ class Member(commands.Cog):
             await interaction.response.send_message(f"{crew_member.username}'s Crew Wars Victories successfully updated\nOld Value: {current_wins}\nNew Value: {new_wins_amount}", ephemeral=True)
 
     @app_commands.command(name="trainer_card", description="View a crew member's Trainer Card")
-    async def trainer_card(self, interaction: discord.Interaction, user: discord.Member, hidden: bool=False):
+    async def trainer_card(self, interaction: discord.Interaction, user: discord.Member, hidden: bool = False):
         with Session() as session:
             row = discord_id_to_member(session, user.id)
             if not row:
@@ -123,19 +125,25 @@ class Member(commands.Cog):
                 title=f"🎴 {row.username}'s Trainer Card",
                 color=discord.Color.blurple()
             )
-            embed.set_author(name=user.display_name, icon_url=getattr(user.display_avatar, "url", None))
+            embed.set_author(name=user.display_name, icon_url=getattr(
+                user.display_avatar, "url", None))
             embed.set_thumbnail(url=getattr(user.display_avatar, "url", None))
 
             embed.add_field(name="IGN", value=row.username or "—", inline=True)
-            embed.add_field(name="Active", value=("✅ Yes" if row.is_active else "❌ No"), inline=True)
-            embed.add_field(name="PvP Experience", value=(row.pvp_experience or "—").title(), inline=True)
+            embed.add_field(name="Active", value=(
+                "✅ Yes" if row.is_active else "❌ No"), inline=True)
+            embed.add_field(name="PvP Experience", value=(
+                row.pvp_experience or "—").title(), inline=True)
             embed.add_field(
                 name="Join Date",
-                value=row.created_at.strftime("%d-%m-%Y") if row.created_at else "—",
+                value=row.created_at.strftime(
+                    "%d-%m-%Y") if row.created_at else "—",
                 inline=True
             )
-            embed.add_field(name="🏆 CW Victories", value=f"{row.crew_wars_wins:,}", inline=True)
-            embed.add_field(name="🏅 Tournament Wins", value=str(total_wins), inline=True)
+            embed.add_field(name="🏆 CW Victories",
+                            value=f"{row.crew_wars_wins:,}", inline=True)
+            embed.add_field(name="🏅 Tournament Wins",
+                            value=str(total_wins), inline=True)
 
             if total_wins > 0:
                 embed.add_field(
@@ -144,9 +152,10 @@ class Member(commands.Cog):
                     inline=False
                 )
 
-        if not hidden:
+        if hidden:
             await interaction.response.send_message(embed=embed, ephemeral=False)
-        
+            return
+
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command(name="show_won_tournaments", description="List all the crew tournaments that a crew member has won")
@@ -173,7 +182,8 @@ class Member(commands.Cog):
                 title=f"🏅 {crew_trainer.username}'s Tournament Wins",
                 color=discord.Color.gold()
             )
-            embed.set_author(name=trainer.display_name, icon_url=getattr(trainer.display_avatar, "url", None))
+            embed.set_author(name=trainer.display_name, icon_url=getattr(
+                trainer.display_avatar, "url", None))
 
             # Build the tournament list
             lines = []
@@ -191,6 +201,46 @@ class Member(commands.Cog):
 
         await interaction.response.send_message(embed=embed, ephemeral=False)
 
+    @app_commands.command(name="edit_join_date", description="Edit the join date of a crew member")
+    @app_commands.default_permissions(administrator=True)
+    @app_commands.describe(
+        member="Crew member whose join date you want to edit",
+        date_str="New join date (format: YYYY-MM-DD)",
+    )
+    async def edit_join_date(self, interaction: discord.Interaction, member: discord.Member, date_str: str):
+        await interaction.response.defer(ephemeral=True, thinking=True)
+
+        try:
+            new_dt = datetime.strptime(
+                date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        except ValueError:
+            await interaction.followup.send(
+                "❌ Invalid date format. Please use **YYYY-MM-DD** (e.g. `2025-10-31`).",
+                ephemeral=True
+            )
+            return
+
+        with Session.begin() as session:
+            crew_member = discord_id_to_member(session, member.id)
+            if not crew_member:
+                await interaction.followup.send(f"Crew member is not registered in our database.")
+                return
+
+            old_dt = crew_member.created_at
+            crew_member.created_at = new_dt
+
+            embed = discord.Embed(
+                title="✅ Join Date Updated",
+                color=discord.Color.green(),
+                description=f"**{member.display_name}**’s join date has been updated."
+            )
+            if old_dt:
+                embed.add_field(
+                    name="Previous", value=f"<t:{int(old_dt.timestamp())}:F>", inline=False)
+            embed.add_field(
+                name="New", value=f"<t:{int(new_dt.timestamp())}:F> (UTC)", inline=False)
+
+            await interaction.followup.send(embed=embed, ephemeral=True)
 
 
 async def setup(bot: commands.Bot):
