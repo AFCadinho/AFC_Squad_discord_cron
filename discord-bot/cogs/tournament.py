@@ -1028,7 +1028,6 @@ class Tournaments(commands.Cog):
                     "❌ Could Not End", f"{e}", discord.Color.red()),
                 ephemeral=True
             )
-            return
 
         with Session.begin() as session:
 
