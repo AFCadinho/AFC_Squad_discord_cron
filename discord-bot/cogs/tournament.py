@@ -2192,7 +2192,7 @@ class Tournaments(commands.Cog):
             )
             return
         
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(ephemeral=False, thinking=True)
 
         with Session.begin() as session:
             tournament = self.__check_if_tournament(session, slug)
@@ -2212,7 +2212,7 @@ class Tournaments(commands.Cog):
 
             await interaction.followup.send(
                 embed=self.build_simple_embed(
-                    "✅ Match Updated", msg, embed_color)
+                    "✅ Match Updated", msg, embed_color), ephemeral=False
             )
 
 async def setup(bot: commands.Bot):
