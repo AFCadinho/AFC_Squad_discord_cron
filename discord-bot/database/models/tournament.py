@@ -92,6 +92,9 @@ class TournamentParticipants(Base):
     challonge_id: Mapped[int] = mapped_column(sa.Integer, nullable=True)
     reward_received: Mapped[bool] = mapped_column(
         sa.Boolean, server_default=sa.false())
+    
+    reward_received_on: Mapped[datetime | None] = mapped_column(
+        sa.DateTime(timezone=True), nullable=True)
 
     tournament_link: Mapped["Tournament"] = relationship(
         back_populates="participant_rows"

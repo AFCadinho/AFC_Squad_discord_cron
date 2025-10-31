@@ -108,6 +108,90 @@ class Member(commands.Cog):
             crew_member.crew_wars_wins = new_wins_amount
             await interaction.response.send_message(f"{crew_member.username}'s Crew Wars Victories successfully updated\nOld Value: {current_wins}\nNew Value: {new_wins_amount}", ephemeral=True)
 
+    @app_commands.command(name="trainer_card", description="View a crew member's Trainer Card")
+    async def trainer_card(self, interaction: discord.Interaction, user: discord.Member, hidden: bool=False):
+        with Session() as session:
+            row = discord_id_to_member(session, user.id)
+            if not row:
+                await interaction.response.send_message(f"No record found for {user.mention}.", ephemeral=True)
+                return
+
+            # Safely compute wins count while session is open
+            total_wins = len(row.won_tournaments)
+
+            embed = discord.Embed(
+                title=f"🎴 {row.username}'s Trainer Card",
+                color=discord.Color.blurple()
+            )
+            embed.set_author(name=user.display_name, icon_url=getattr(user.display_avatar, "url", None))
+            embed.set_thumbnail(url=getattr(user.display_avatar, "url", None))
+
+            embed.add_field(name="IGN", value=row.username or "—", inline=True)
+            embed.add_field(name="Active", value=("✅ Yes" if row.is_active else "❌ No"), inline=True)
+            embed.add_field(name="PvP Experience", value=(row.pvp_experience or "—").title(), inline=True)
+            embed.add_field(
+                name="Join Date",
+                value=row.created_at.strftime("%d-%m-%Y") if row.created_at else "—",
+                inline=True
+            )
+            embed.add_field(name="🏆 CW Victories", value=f"{row.crew_wars_wins:,}", inline=True)
+            embed.add_field(name="🏅 Tournament Wins", value=str(total_wins), inline=True)
+
+            if total_wins > 0:
+                embed.add_field(
+                    name="More",
+                    value=f"Use `/show_won_tournaments` to see all wins.",
+                    inline=False
+                )
+
+        if not hidden:
+            await interaction.response.send_message(embed=embed, ephemeral=False)
+        
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @app_commands.command(name="show_won_tournaments", description="List all the crew tournaments that a crew member has won")
+    async def show_won_tournaments(self, interaction: discord.Interaction, trainer: discord.Member):
+        with Session() as session:
+            discord_user = interaction.user
+            crew_member = discord_id_to_member(session, discord_user.id)
+            crew_trainer = discord_id_to_member(session, trainer.id)
+
+            if not crew_member:
+                await interaction.response.send_message("❌ You have to be a crew member to use this command.", ephemeral=True)
+                return
+
+            if not crew_trainer:
+                await interaction.response.send_message("❌ No records found for this trainer.", ephemeral=True)
+                return
+
+            total_wins = len(crew_trainer.won_tournaments)
+            if total_wins == 0:
+                await interaction.response.send_message(f"{trainer.mention} has no tournament wins yet.", ephemeral=False)
+                return
+
+            embed = discord.Embed(
+                title=f"🏅 {crew_trainer.username}'s Tournament Wins",
+                color=discord.Color.gold()
+            )
+            embed.set_author(name=trainer.display_name, icon_url=getattr(trainer.display_avatar, "url", None))
+
+            # Build the tournament list
+            lines = []
+            for t in crew_trainer.won_tournaments:
+                name = getattr(t, "name", "Unnamed Tournament")
+                url = getattr(t, "url", None)
+                if url:
+                    lines.append(f"• [{name}]({url})")
+                else:
+                    lines.append(f"• {name}")
+
+            embed.description = "\n".join(lines[:25])
+
+            embed.set_footer(text=f"Total Wins: {total_wins}")
+
+        await interaction.response.send_message(embed=embed, ephemeral=False)
+
+
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Member(bot))

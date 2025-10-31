@@ -136,32 +136,55 @@ class Admin(commands.Cog):
                 )
                 return
 
-        embed = discord.Embed(
-            title="User Details",
-            color=discord.Color.blurple()
-        )
-        embed.set_author(name=user.name, icon_url=getattr(
-            user.display_avatar, "url", None))
-        embed.set_thumbnail(url=getattr(user.display_avatar, "url", None))
+            embed = discord.Embed(
+                title="User Details",
+                color=discord.Color.blurple()
+            )
+            embed.set_author(name=user.name, icon_url=getattr(
+                user.display_avatar, "url", None))
+            embed.set_thumbnail(url=getattr(user.display_avatar, "url", None))
 
-        # Core DB info
-        embed.add_field(name="IGN", value=row.username, inline=True)
-        embed.add_field(name="Discord ID", value=str(
-            row.discord_id), inline=True)
-        embed.add_field(name="Active", value=(
-            "✅ Yes" if row.is_active else "❌ No"), inline=True)
+            # Core DB info
+            embed.add_field(name="IGN", value=row.username, inline=True)
+            embed.add_field(name="Discord ID", value=str(
+                row.discord_id), inline=True)
+            embed.add_field(name="Active", value=(
+                "✅ Yes" if row.is_active else "❌ No"), inline=True)
 
-        embed.add_field(name="PvP Experience",
-                        value=row.pvp_experience.title(), inline=True)
-        embed.add_field(name="Country / Timezone",
-                        value=(row.country or "—"), inline=True)
-        embed.add_field(name="Join Date", value=str(
-            row.created_at.strftime("%d-%m-%Y")), inline=True)
-        embed.add_field(
-            name="🏆 Crew Wars Wins",
-            value=f"{row.crew_wars_wins:,}",
-            inline=True
-        )
+            embed.add_field(name="PvP Experience",
+                            value=row.pvp_experience.title(), inline=True)
+            embed.add_field(name="Country / Timezone",
+                            value=(row.country or "—"), inline=True)
+            embed.add_field(name="Join Date", value=str(
+                row.created_at.strftime("%d-%m-%Y")), inline=True)
+            embed.add_field(
+                name="🏆 Crew Wars Wins",
+                value=f"{row.crew_wars_wins:,}",
+                inline=True
+            )
+            # 🏅 Tournament wins section (hybrid format)
+            total_wins = len(getattr(row, "won_tournaments", []))
+            if total_wins:
+                preview = "\n".join(
+                    f"[{t.name}]({t.url})" for t in row.won_tournaments[:3] if getattr(t, "url", None)
+                ) or "\n".join(
+                    t.name for t in row.won_tournaments[:3]
+                )
+
+                if total_wins > 3:
+                    preview += f"\n...and {total_wins - 3} more"
+
+                embed.add_field(
+                    name="🏆 Tournament Wins",
+                    value=f"{total_wins} total wins\n{preview}",
+                    inline=False
+                )
+            else:
+                embed.add_field(
+                    name="🏆 Tournament Wins",
+                    value="No tournament wins yet",
+                    inline=False
+                )
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
 

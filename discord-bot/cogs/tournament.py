@@ -258,12 +258,12 @@ class Tournaments(commands.Cog):
         return tournament_id if tournament_id else None
 
     @staticmethod
-    def __user_id_to_member(session, user_id):
+    def __user_id_to_member(session, user_id) -> User:
         stmt = select(User).where(User.id == user_id)
         return session.scalars(stmt).first()
 
     @staticmethod
-    def __check_if_participant(session, tournament_id, user_id):
+    def __check_if_participant(session, tournament_id, user_id) -> TournamentParticipants:
         stmt = select(TournamentParticipants).where(
             TournamentParticipants.user_id == user_id,
             TournamentParticipants.tournament_id == tournament_id)
@@ -1061,7 +1061,7 @@ class Tournaments(commands.Cog):
                 return
 
             crew_member = self.__user_id_to_member(
-                session, participant_winner.id)
+                session, participant_winner.user_id)
             if not crew_member:
                 await interaction.response.send_message(
                     embed=self.build_simple_embed(
@@ -2043,6 +2043,7 @@ class Tournaments(commands.Cog):
 
             # Edit Vod Link
             current_match.battle_url = vod_link
+            await interaction.followup.send(f"VOD URL successfully updated for this match\nMatch ID {current_match.id}")
     
     @app_commands.command(name="get_match_details", description="Get the details of a match in the current tournament")
     @app_commands.default_permissions(administrator=True)
@@ -2214,6 +2215,155 @@ class Tournaments(commands.Cog):
                 embed=self.build_simple_embed(
                     "✅ Match Updated", msg, embed_color), ephemeral=False
             )
+
+    @app_commands.command(name="create_reward_channels", description="Create channels for unreceived rewards")
+    @app_commands.default_permissions(administrator=True)
+    async def create_reward_channels(self, interaction: discord.Interaction):
+        guild = interaction.guild
+        slug = slugify(self.current_tournament)
+
+        if not guild:
+            return
+        
+        with Session() as session:
+            tournament =  self.__check_if_tournament(session, slug)
+            if not tournament:
+                await interaction.response.send_message(f"There is currently no tournament going on.")
+
+            await interaction.response.defer(ephemeral=True, thinking=True)
+            
+            stmt = (
+                select(User)
+                .join(TournamentParticipants, TournamentParticipants.user_id == User.id)
+                .where(
+                    TournamentParticipants.tournament_id == tournament.id,
+                    TournamentParticipants.reward_received == False
+                )
+            )
+            crew_members = list(session.scalars(stmt).all()) 
+            if len(crew_members) == 0:
+                await interaction.followup.send(f"There are no participants that still need to receive a reward")
+
+            channel_amount = await self.channel_factory.tournament_rewards(guild, crew_members, REWARDS_CATEGORY, slug)
+            await interaction.followup.send(f"{channel_amount} reward channels have been created", ephemeral=True)
+
+
+    @app_commands.command(name="reward_participant", description="Confirm that a player has received a reward in the current tournament")
+    @app_commands.default_permissions(administrator=True)
+    async def reward_player(self, interaction: discord.Interaction, member: discord.Member):
+        slug = slugify(self.current_tournament)
+        if not slug:
+            await interaction.response.send_message(f"There is currently no tournament going on.", ephemeral=True)
+            return
+
+        await interaction.response.defer(ephemeral=True, thinking=True)
+
+        with Session.begin() as session:
+            crew_member = discord_id_to_member(session, member.id)
+            tournament = self.__check_if_tournament(session, slug)
+
+            if not crew_member:
+                await interaction.followup.send(f"Crew Member is not registered in our database.", ephemeral=True)
+                return
+
+            participant = self.__check_if_participant(session, tournament.id, crew_member.id)
+            if not participant:
+                await interaction.followup.send(f"{crew_member.username} is not a participant for this tournament.", ephemeral=True)
+                return
+
+            participant.reward_received = True
+            participant.reward_received_on = datetime.now(timezone.utc)
+
+            await interaction.followup.send(f"Rewards Successfully rewarded", ephemeral=True)
+
+    @app_commands.command(name="participant_info", description="Get the details of a participant in the current tournament")
+    async def participant_info(self, interaction: discord.Interaction, member: discord.Member):
+        slug = slugify(self.current_tournament)
+        if not slug:
+            await interaction.response.send_message("There is currently no tournament set.", ephemeral=True)
+            return
+
+        with Session() as session:
+            crew_member = discord_id_to_member(session, member.id)
+            tournament = self.__check_if_tournament(session, slug)
+
+            if not crew_member:
+                await interaction.response.send_message("❌ Crew member is not registered in our database.", ephemeral=True)
+                return
+
+            if not tournament:
+                await interaction.response.send_message("❌ Current tournament not found in the database.", ephemeral=True)
+                return
+
+            participant = self.__check_if_participant(session, tournament.id, crew_member.id)
+            if not participant:
+                await interaction.response.send_message(
+                    f"❌ **{crew_member.username}** is not a participant for **{tournament.name}**.",
+                    ephemeral=True
+                )
+                return
+
+            p_id = participant.id
+            challonge_pid = participant.challonge_id
+
+            m_p1 = participant.matches_row_p1 or []
+            m_p2 = participant.matches_row_p2 or []
+            all_matches = list(m_p1) + list(m_p2)
+
+            played = len(all_matches)
+            completed = sum(1 for m in all_matches if m.completed)
+            wins = sum(1 for m in all_matches if m.winner_participant_id == p_id)
+
+            # Next (incomplete) match for this participant (pick the first)
+            next_match = next(
+                (m for m in all_matches if not m.completed),
+                None
+            )
+            next_sched = getattr(next_match, "scheduled_datetime", None)
+
+            # Reward status
+            rewarded = bool(participant.reward_received)
+            rewarded_on = participant.reward_received_on
+            rewarded_str = "✅ Received" if rewarded else "❌ Not received"
+            rewarded_time_str = (
+                f"<t:{int(rewarded_on.timestamp())}:F>" if rewarded and rewarded_on else "—"
+            )
+
+            # --- Embed ---
+            embed = discord.Embed(
+                title=f"🧾 Participant Info — {tournament.name}",
+                color=discord.Color.blurple()
+            )
+            embed.set_author(name=member.display_name, icon_url=getattr(member.display_avatar, "url", None))
+            embed.set_thumbnail(url=getattr(member.display_avatar, "url", None))
+
+            # Identity / IDs
+            embed.add_field(name="Trainer", value=member.mention, inline=True)
+            embed.add_field(name="IGN", value=crew_member.username or "—", inline=True)
+            embed.add_field(name="Participant ID", value=str(p_id), inline=True)
+
+            # Challonge linkage
+            embed.add_field(name="Challonge Participant", value=str(challonge_pid or "—"), inline=True)
+            embed.add_field(name="Tournament Round(s)", value=(", ".join({str(m.round) for m in all_matches}) or "—"), inline=True)
+            embed.add_field(name="Tournament Link", value=f"[Open]({tournament.url})", inline=True)
+
+            # Match stats
+            embed.add_field(name="Matches Played", value=str(played), inline=True)
+            embed.add_field(name="Completed", value=str(completed), inline=True)
+            embed.add_field(name="Wins", value=str(wins), inline=True)
+
+            # Next match (if any / scheduled)
+            if next_sched:
+                ts = int(next_sched.timestamp())
+                embed.add_field(name="Next Match", value=f"<t:{ts}:F>\n<t:{ts}:R>", inline=False)
+            elif played != completed:
+                embed.add_field(name="Next Match", value="Pending (not scheduled)", inline=False)
+
+            # Reward status
+            embed.add_field(name="Reward Status", value=f"{rewarded_str}\n{rewarded_time_str}", inline=False)
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Tournaments(bot))

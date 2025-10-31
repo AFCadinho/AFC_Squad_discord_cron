@@ -61,7 +61,7 @@ class ChannelFactory:
 
         return None
 
-    async def tournament_rewards(self, guild: discord.Guild, users: list, category_id, slug):
+    async def tournament_rewards(self, guild: discord.Guild, users: list, category_id, slug) -> int:
         if not guild:
             return
 
