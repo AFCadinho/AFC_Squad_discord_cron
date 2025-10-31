@@ -8,7 +8,7 @@ class ChannelFactory:
     def __init__(self, bot) -> None:
         self.bot = bot
 
-    async def _base(self, guild: discord.Guild, name, category_id=None) -> discord.TextChannel | None:
+    async def _base(self, guild: discord.Guild, users: list[discord.Member], name, category_id=None) -> discord.TextChannel | None:
         channel_name = name
         discord_category = None
         text_channel = None
@@ -20,6 +20,8 @@ class ChannelFactory:
             discord_category = discord.utils.get(
                 guild.categories, id=category_id)
             text_channel = await guild.create_text_channel(channel_name, category=discord_category)
+            for user in users:
+                await text_channel.set_permissions(user, view_channel=True, send_messages=True, read_message_history=True)
         else:
             return
 
@@ -40,9 +42,11 @@ class ChannelFactory:
 
         if not discord_user1 or not discord_user2:
             return None
+        
+        discord_users = [discord_user1, discord_user2]
 
         channel_name = f"{discord_user1.display_name}-vs-{discord_user2.display_name}"
-        text_channel = await self._base(guild, channel_name, category_id)
+        text_channel = await self._base(guild, discord_users, channel_name, category_id)
         if text_channel:
             await text_channel.send(
                 f"🎯 **Match Channel Created — Round {match_round}!**\n\n"
@@ -82,7 +86,7 @@ class ChannelFactory:
                     f"Skipping channel creation. Reason: Reward Channel already exists for user {user.username}.")
                 continue
 
-            text_channel = await self._base(guild, channel_name, category_id)
+            text_channel = await self._base(guild, [discord_user], channel_name, category_id)
 
             if text_channel:
                 await text_channel.send(
