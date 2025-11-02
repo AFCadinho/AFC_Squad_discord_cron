@@ -4,6 +4,7 @@ from .discord_helper import log_command_error
 from .embed_factory import EmbedFactory
 from .channel_management import ChannelFactory, ChannelManager, ChannelDestroyer
 from .tournament_announcements import create_new_round_message, create_winner_message
+from .datetime_helper import convert_datetime, parse_duration_string, get_timeout_seconds
 
 __all__ = [
     "get_timezones",
@@ -16,5 +17,8 @@ __all__ = [
     "ChannelManager",
     "ChannelDestroyer",
     "create_new_round_message",
-    "create_winner_message"
+    "create_winner_message",
+    "convert_datetime",
+    "parse_duration_string",
+    "get_timeout_seconds"
 ]

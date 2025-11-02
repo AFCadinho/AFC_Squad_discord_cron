@@ -1,15 +1,39 @@
+# shellcheck disable=SC2148,SC2034
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 CRON_TZ=UTC
 
-# Crew Wars reminders - 5 minutes before each event (UTC time)
-55 15 * * 1 . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
-55 09 * * 3 . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
-55 19 * * 3 . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
-55 19 * * 4 . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
+# # Crew Wars reminders - 5 minutes before each event (UTC time) STANDARD
+# 55 15 * * 1 . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
+# 55 09 * * 3 . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
+# 55 19 * * 3 . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
+# 55 19 * * 4 . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
+# 55 02 * * 6 . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
+# 55 00 * * 0 . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
+# 55 17 * * 0 . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
+
+# # Crew Wars reminders - 5 minutes before each event (UTC time) HALLOWEEN EVENT
+# Saturday 3:00 AM (OU)
 55 02 * * 6 . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
-55 00 * * 0 . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
+
+# Sunday 12:00 AM (OU)  → runs Saturday 23:55
+55 23 * * 6 . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
+
+# Sunday 6:00 PM (OU)
 55 17 * * 0 . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
+
+# Monday 4:00 PM (UU)
+55 15 * * 1 . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
+
+# Wednesday 9:00 AM (UU) — moved earlier
+55 08 * * 3 . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
+
+# Wednesday 7:00 PM (OU) — moved earlier
+55 18 * * 3 . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
+
+# Thursday 7:00 PM (UU) — moved earlier
+55 18 * * 4 . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 cws_reminder.py >> /var/log/cron.log 2>&1
+
 
 # Crew wars Wins check in (UTC)
 55 22 1 * *  . /app/cron.env && cd /app && /usr/local/bin/poetry run python3 wins_tracker.py >> /var/log/cron.log 2>&1

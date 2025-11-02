@@ -8,6 +8,7 @@ from database.base import Base
 if TYPE_CHECKING:
     from database.models.lending import Loan  # only for type hints
     from database.models.tournament import Tournament, TournamentParticipants
+    from database.models.giveaways import GiveAway, GiveAwayEntry
 
 
 class User(Base):
@@ -36,6 +37,16 @@ class User(Base):
     tournament_rows: Mapped[List["TournamentParticipants"]] = relationship(
         back_populates="user_link",
         cascade="all"
+    )
+
+    giveaways_row: Mapped[List["GiveAwayEntry"]] = relationship(
+        back_populates="user_link",
+        cascade="all"
+    )
+
+    won_giveaways: Mapped[List["GiveAway"]] = relationship(
+        foreign_keys="GiveAway.winner_id",
+        back_populates="winner",
     )
 
 
