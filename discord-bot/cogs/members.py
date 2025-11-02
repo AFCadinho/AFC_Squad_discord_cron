@@ -1,20 +1,135 @@
 import discord
+import os
+import logging
 
 from discord.ext import commands
 from discord import app_commands
 from database.database import Session
-from helpers import get_timezones, discord_id_to_member
+from helpers import get_timezones, discord_id_to_member, CommandLogger
 from zoneinfo import ZoneInfo
-from helpers import discord_id_to_member, CommandLogger
 from datetime import datetime, timezone
 
 MAX_CHOICES = 25
+CWS_WINS_CHANNEL = int(os.getenv("CWS_WINS_CHANNEL_ID", 0))
+log = logging.getLogger(__name__)
+
+
+class WindsUpdateModal(discord.ui.Modal, title="Update Total Crew Wars Wins"):
+    def __init__(self, cog: "Member", current_wins) -> None:
+        super().__init__()
+        self.cog = cog
+
+        self.wins = discord.ui.TextInput(
+            label=f"Total Wins",
+            placeholder="Enter your total Crew Wars victories (e.g. 69)",
+            default=str(current_wins) if current_wins is not None else None,
+            required=True,
+            max_length=6
+        )
+        self.add_item(self.wins)
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        new_wins = self.wins.value.strip()
+        if not new_wins.isdigit():
+            await interaction.response.send_message(
+                "❌ Please enter a valid number.",
+                ephemeral=True
+            )
+            return
+
+        await self.cog.update_total_wins(interaction, int(new_wins))
+
+
+class WinsUpdateView(discord.ui.View):
+    def __init__(self, cog: "Member", timeout: float | None = None):
+        super().__init__(timeout=timeout)
+        self.cog = cog
+
+    @discord.ui.button(
+        label="Update Total Wins",
+        style=discord.ButtonStyle.green,
+        emoji="🏰",
+        custom_id="cws_wins:updater"
+    )
+    async def button_callback(self, interaction: discord.Interaction, button: discord.ui.Button):  
+        discord_member = interaction.user
+        if not isinstance(discord_member, discord.Member):
+            return
+        
+        with Session() as session:
+            crew_member = discord_id_to_member(session, discord_member.id)
+            if not crew_member:
+                await interaction.response.send_message(
+                    "❌ You are not registered in the database. Please contact staff.",
+                    ephemeral=True
+                )
+                return
+
+        modal = WindsUpdateModal(self.cog, crew_member.crew_wars_wins)
+        await interaction.response.send_modal(modal)
 
 
 class Member(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.command_logger = CommandLogger(bot)
+
+    async def cog_load(self):
+        self.bot.add_view(WinsUpdateView(self))
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        if message.author.bot:
+            return
+
+        if not isinstance(message.channel, (discord.TextChannel)):
+            return
+
+        if message.channel.id != CWS_WINS_CHANNEL:
+            return
+
+        async for msg in message.channel.history(limit=20):
+            if msg.author == self.bot.user:
+                try:
+                    await msg.delete()
+                except Exception as e:
+                    log.info(f"On Message Listener: {e}")
+
+        await message.reply(
+            content="Update your Crew Wars Victories below:",
+            view=WinsUpdateView(self),
+            mention_author=False
+        )
+
+    async def update_total_wins(self, interaction: discord.Interaction, wins: int):
+        discord_id = interaction.user.id
+        discord_user = interaction.user
+        if not isinstance(discord_user, discord.Member):
+            return
+
+        if not interaction.guild:
+            return
+
+        with Session.begin() as session:
+            crew_member = discord_id_to_member(session, discord_id)
+
+            if not crew_member:
+                feedback = f"You are not registered in the database. Please contact staff"
+                await interaction.response.send_message(feedback, ephemeral=True)
+                await self.command_logger.discord_log(interaction.guild, "update_wins_cw", discord_user, error_msg=feedback)
+                return
+
+            new_wins_amount = wins
+            current_wins = crew_member.crew_wars_wins
+            if new_wins_amount < current_wins:
+                feedback = f"The amount of wins has to be greater than the current amount of wins.\nCurrent wins: {current_wins}"
+                await interaction.response.send_message(f"The amount of wins has to be greater than the current amount of wins.\nCurrent wins: {current_wins}", ephemeral=True)
+                await self.command_logger.discord_log(interaction.guild, "update_wins_cw", discord_user, error_msg=feedback)
+                return
+
+            crew_member.crew_wars_wins = new_wins_amount
+            await interaction.response.send_message(f"{crew_member.username}'s Crew Wars Victories successfully updated\nOld Value: {current_wins}\nNew Value: {new_wins_amount}", ephemeral=True)
+            await self.command_logger.discord_log(interaction.guild, "update_wins_cw", discord_user)
 
     async def autocomplete_timezone_name(self, interaction: discord.Interaction, current: str):
         user = interaction.user
@@ -88,41 +203,8 @@ class Member(commands.Cog):
         return await self.autocomplete_timezone_name(interaction, current)
 
     @app_commands.command(name="update_wins_cw", description="Update the amount of Crew Wars Victories you have")
-    async def update_wins_cw(self, interaction: discord.Interaction, wins: str):
-        discord_id = interaction.user.id
-        discord_user = interaction.user
-        if not isinstance(discord_user, discord.Member):
-            return
-
-        if not interaction.guild:
-            return
-
-        with Session.begin() as session:
-            crew_member = discord_id_to_member(session, discord_id)
-
-            if not crew_member:
-                feedback = f"You are not registered in the database. Please contact staff"
-                await interaction.response.send_message(feedback, ephemeral=True)
-                await self.command_logger.discord_log(interaction.guild, "update_wins_cw", discord_user, error_msg=feedback)
-                return
-
-            if not wins.isdigit():
-                feedback = f"The amount of wins has to be a digit. e.g. 69"
-                await interaction.response.send_message(f"The amount of wins has to be a digit. e.g. 69", ephemeral=True)
-                await self.command_logger.discord_log(interaction.guild, "update_wins_cw", discord_user, error_msg=feedback)
-                return
-
-            new_wins_amount = int(wins)
-            current_wins = crew_member.crew_wars_wins
-            if new_wins_amount < current_wins:
-                feedback = f"The amount of wins has to be greater than the current amount of wins.\nCurrent wins: {current_wins}"
-                await interaction.response.send_message(f"The amount of wins has to be greater than the current amount of wins.\nCurrent wins: {current_wins}", ephemeral=True)
-                await self.command_logger.discord_log(interaction.guild, "update_wins_cw", discord_user, error_msg=feedback)
-                return
-
-            crew_member.crew_wars_wins = new_wins_amount
-            await interaction.response.send_message(f"{crew_member.username}'s Crew Wars Victories successfully updated\nOld Value: {current_wins}\nNew Value: {new_wins_amount}", ephemeral=True)
-            await self.command_logger.discord_log(interaction.guild, "update_wins_cw", discord_user)
+    async def update_wins_cw(self, interaction: discord.Interaction, wins: int):
+        await self.update_total_wins(interaction, wins)
 
     @app_commands.command(name="trainer_card", description="View a crew member's Trainer Card")
     async def trainer_card(self, interaction: discord.Interaction, user: discord.Member, hidden: bool = False):
@@ -132,7 +214,6 @@ class Member(commands.Cog):
                 await interaction.response.send_message(f"No record found for {user.mention}.", ephemeral=True)
                 return
 
-            # Safely compute wins count while session is open
             total_wins = len(row.won_tournaments)
 
             embed = discord.Embed(
