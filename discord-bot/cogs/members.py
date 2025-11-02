@@ -5,7 +5,7 @@ import logging
 from discord.ext import commands
 from discord import app_commands
 from database.database import Session
-from helpers import get_timezones, discord_id_to_member, CommandLogger
+from helpers import get_timezones, discord_id_to_member, CommandLogger, EmbedFactory
 from zoneinfo import ZoneInfo
 from datetime import datetime, timezone
 
@@ -73,6 +73,7 @@ class Member(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.command_logger = CommandLogger(bot)
+        self.embed_factory = EmbedFactory(bot)
 
     async def cog_load(self):
         self.bot.add_view(WinsUpdateView(self))
@@ -95,8 +96,10 @@ class Member(commands.Cog):
                 except Exception as e:
                     log.info(f"On Message Listener: {e}")
 
+        embed = self.embed_factory.cw_update_reminder()
+
         await message.reply(
-            content="Update your Crew Wars Victories below:",
+            embed=embed,
             view=WinsUpdateView(self),
             mention_author=False
         )

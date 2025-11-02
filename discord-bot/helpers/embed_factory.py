@@ -1,6 +1,10 @@
 import discord
+import os
+
 from datetime import datetime, timezone
 from .datetime_helper import convert_datetime
+
+CWS_WINS_TRACKER_CH = int(os.getenv("CWS_WINS_TRACKER_CH_ID", 0))
 
 class EmbedFactory:
     def __init__(self, bot) -> None:
@@ -73,4 +77,22 @@ class EmbedFactory:
                 inline=False
             )
 
+        return embed
+    
+    def cw_update_reminder(self):
+        check_in_line=f"<#{CWS_WINS_TRACKER_CH}>"
+        if not CWS_WINS_TRACKER_CH:
+            check_in_line = "The CW wins check in channel"
+        
+        description = (
+            f"Please keep your **Total Crew Wars Victories** up to date to avoid being flagged as inactive.\n"
+            f"Press the button below to update your total.\n\n"
+            f"For check-in schedules and the latest reviewed wins, visit {check_in_line}. 🏆"    
+        )
+
+        embed = self._base(
+            title="🏰 Update Your Crew Wars Wins",
+            description=description,
+            color=discord.Color.blurple(),
+        )
         return embed
