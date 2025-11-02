@@ -94,5 +94,6 @@ class EmbedFactory:
             title="🏰 Update Your Crew Wars Wins",
             description=description,
             color=discord.Color.blurple(),
+            show_footer=False
         )
         return embed
