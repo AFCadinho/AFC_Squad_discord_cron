@@ -5,7 +5,6 @@ from sqlalchemy import select, desc, asc
 from database import Session
 from models import User
 
-STAFF_ANNOUNCEMENTS_CH = int(os.getenv("STAFF_ANNOUNCEMENTS_CH_ID", 0))
 WINS_TRACKER_WEBHOOK = os.getenv("WEBHOOK_WINS", "")
 INACTIVE_REPORT_WEBHOOK = os.getenv("INACTIVE_REPORT_WEBHOOK", "")
 
