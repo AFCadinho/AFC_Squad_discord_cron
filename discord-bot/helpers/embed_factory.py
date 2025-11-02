@@ -15,7 +15,7 @@ class EmbedFactory:
         )
         
         if show_footer:
-            embed.set_footer(text=self.bot.user.name, icon_url=self.bot.user.display_avatar)
+            embed.set_footer(text=self.bot.user.name, icon_url=self.bot.user.display_avatar.url)
         return embed
 
     def success(self, message: str):
@@ -52,4 +52,25 @@ class EmbedFactory:
             f"👥 **Participants:** {participants}"
         )
         
+        return embed
+    
+    def discord_log(self, discord_user: discord.Member, command_name: str, error_msg=None):
+        embed = self._base(
+            title=f"{'❌' if error_msg else '✅'} /{command_name.lower()}",
+            color=discord.Color.red() if error_msg else discord.Color.green()
+        )
+
+        embed.add_field(
+            name="User",
+            value=f"{discord_user.mention}",
+            inline=False
+        )
+
+        if error_msg:
+            embed.add_field(
+                name="Error",
+                value=f"{error_msg}",
+                inline=False
+            )
+
         return embed

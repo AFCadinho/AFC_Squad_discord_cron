@@ -5,6 +5,7 @@ from .embed_factory import EmbedFactory
 from .channel_management import ChannelFactory, ChannelManager, ChannelDestroyer
 from .tournament_announcements import create_new_round_message, create_winner_message
 from .datetime_helper import convert_datetime, parse_duration_string, get_timeout_seconds
+from .command_logger import CommandLogger
 
 __all__ = [
     "get_timezones",
@@ -20,5 +21,6 @@ __all__ = [
     "create_winner_message",
     "convert_datetime",
     "parse_duration_string",
-    "get_timeout_seconds"
+    "get_timeout_seconds",
+    "CommandLogger"
 ]
