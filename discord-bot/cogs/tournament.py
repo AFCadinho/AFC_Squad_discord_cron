@@ -98,7 +98,7 @@ class Tournaments(commands.Cog):
         self.channel_factory = ChannelFactory(bot)
         self.channel_manager = ChannelManager(bot)
         self.channel_destroyer = ChannelDestroyer(bot)
-
+    
     # Static Methods ---------------------------------
     @staticmethod
     def __get_final_match(session, tournament_id, tournament_round, limit=1):
@@ -372,6 +372,85 @@ class Tournaments(commands.Cog):
             )
 
     # HELPER FUNCTIONS
+    async def unregister_tournament(self, interaction: discord.Interaction):
+        member = interaction.user
+        slug = slugify(self.current_tournament)
+        if not slug:
+            await interaction.response.send_message(
+                embed=self.build_simple_embed(
+                    "ℹ️ Info", "There is currently no tournament ongoing.", discord.Color.blurple()),
+                ephemeral=True
+            )
+            return
+
+        msg = await self.__remove_player_from_tournament(member, slug)
+
+        await interaction.response.send_message(
+            embed=self.build_simple_embed(
+                "🗑️ Unregister", msg, discord.Color.orange()),
+            ephemeral=True
+        )
+
+    async def sign_up_tournament(self, interaction: discord.Interaction):
+        if interaction.channel_id != int(SIGNUPS_CH):
+            await interaction.response.send_message(
+                embed=self.build_simple_embed(
+                    "🚫 Wrong Channel",
+                    f"Use this command in <#{SIGNUPS_CH}>.",
+                    discord.Color.red(),
+                ),
+                ephemeral=True,
+            )
+            return
+
+        member = interaction.user
+        slug = self.current_tournament
+        if not slug:
+            await interaction.response.send_message(
+                embed=self.build_simple_embed(
+                    "ℹ️ Info",
+                    "There is currently no tournament ongoing.",
+                    discord.Color.blurple(),
+                ),
+                ephemeral=True,
+            )
+            return
+
+        tournament, msg = await self.__add_player_to_tournament(member, slug)
+
+        with Session() as session:
+            tournament = self.__check_if_tournament(session, slug)
+
+            # Log it
+            await self._log_to_logs(
+                title="📝 Sign Up",
+                description=f"By: {interaction.user.mention} ({interaction.user.id})",
+                fields={
+                    "Result": msg,
+                    "Tournament": tournament.name if tournament else slug,
+                    "Bracket": tournament.url if tournament and tournament.url else "—",
+                    "Channel": f"<#{interaction.channel_id}>",
+                },
+            )
+
+            embed = discord.Embed(
+                title="✅ Successfully Signed Up!",
+                description=msg,
+                color=discord.Color.green()
+            )
+            if tournament:
+                embed.add_field(name="Tournament",
+                                value=tournament.name, inline=True)
+                if getattr(tournament, "url", None):
+                    embed.add_field(
+                        name="Bracket",
+                        value=f"[View on Challonge]({tournament.url})",
+                        inline=True
+                    )
+            embed.set_footer(text="Good luck, have fun!")
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
     async def get_match_for_discord_ids(self, session, tournament_id, discord_id1, discord_id2) -> TournamentMatches | None:
         crew_member1 = discord_id_to_member(session, discord_id1)
         crew_member2 = discord_id_to_member(session, discord_id2)
@@ -1170,64 +1249,7 @@ class Tournaments(commands.Cog):
 
     @app_commands.command(name="sign_up", description="Sign up for the current tournament")
     async def sign_up(self, interaction: discord.Interaction):
-        if interaction.channel_id != int(SIGNUPS_CH):
-            await interaction.response.send_message(
-                embed=self.build_simple_embed(
-                    "🚫 Wrong Channel",
-                    f"Use this command in <#{SIGNUPS_CH}>.",
-                    discord.Color.red(),
-                ),
-                ephemeral=True,
-            )
-            return
-
-        member = interaction.user
-        slug = self.current_tournament
-        if not slug:
-            await interaction.response.send_message(
-                embed=self.build_simple_embed(
-                    "ℹ️ Info",
-                    "There is currently no tournament ongoing.",
-                    discord.Color.blurple(),
-                ),
-                ephemeral=True,
-            )
-            return
-
-        tournament, msg = await self.__add_player_to_tournament(member, slug)
-
-        with Session() as session:
-            tournament = self.__check_if_tournament(session, slug)
-
-            # Log it
-            await self._log_to_logs(
-                title="📝 Sign Up",
-                description=f"By: {interaction.user.mention} ({interaction.user.id})",
-                fields={
-                    "Result": msg,
-                    "Tournament": tournament.name if tournament else slug,
-                    "Bracket": tournament.url if tournament and tournament.url else "—",
-                    "Channel": f"<#{interaction.channel_id}>",
-                },
-            )
-
-            embed = discord.Embed(
-                title="✅ Successfully Signed Up!",
-                description=msg,
-                color=discord.Color.green()
-            )
-            if tournament:
-                embed.add_field(name="Tournament",
-                                value=tournament.name, inline=True)
-                if getattr(tournament, "url", None):
-                    embed.add_field(
-                        name="Bracket",
-                        value=f"[View on Challonge]({tournament.url})",
-                        inline=True
-                    )
-            embed.set_footer(text="Good luck, have fun!")
-
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await self.sign_up_tournament(interaction)
 
     @app_commands.command(name="add_participant", description="Manually add participants to the current tournament")
     @app_commands.default_permissions(administrator=True)
@@ -1250,23 +1272,7 @@ class Tournaments(commands.Cog):
 
     @app_commands.command(name="unregister", description="withdraw from the current tournament")
     async def unregister(self, interaction: discord.Interaction):
-        member = interaction.user
-        slug = slugify(self.current_tournament)
-        if not slug:
-            await interaction.response.send_message(
-                embed=self.build_simple_embed(
-                    "ℹ️ Info", "There is currently no tournament ongoing.", discord.Color.blurple()),
-                ephemeral=True
-            )
-            return
-
-        msg = await self.__remove_player_from_tournament(member, slug)
-
-        await interaction.response.send_message(
-            embed=self.build_simple_embed(
-                "🗑️ Unregister", msg, discord.Color.orange()),
-            ephemeral=True
-        )
+        await self.unregister_tournament(interaction)
 
     @app_commands.command(name="unregister_player", description="withdraw a player from the current tournament")
     @app_commands.default_permissions(administrator=True)

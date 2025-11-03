@@ -2,6 +2,7 @@ import discord
 import os
 from discord import app_commands
 from discord.ext import commands
+from views import SignUpView
 
 # Channel IDs from env (make sure they're ints)
 SIGNUPS_CH = int(os.getenv("SIGNUPS_CH_ID", 0))
@@ -15,6 +16,9 @@ SCHEDULING_CH = int(os.getenv("SCHEDULING_CH_ID", 0))
 class TournamentInfo(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+
+    async def cog_load(self):
+        self.bot.add_view(SignUpView(self.bot))
 
     # === General Tournament Info ===
     @app_commands.command(name="general_tournament_info", description="Shows general tournament information")
@@ -226,9 +230,10 @@ class TournamentInfo(commands.Cog):
     async def post_signup_embed(self, interaction: discord.Interaction):
         ch = self.bot.get_channel(SIGNUPS_CH)
         if ch is None:
-            ch = await self.bot.fetch_channel(SIGNUPS_CH)
+            ch: discord.TextChannel = await self.bot.fetch_channel(SIGNUPS_CH)
         if ch:
-            await ch.send(embed=self._signup_embed())
+            view = SignUpView(self.bot)
+            await ch.send(embed=self._signup_embed(), view=view)
             await interaction.response.send_message("Sign-up embed posted.", ephemeral=True)
         else:
             await interaction.response.send_message("Couldn’t find the sign-up channel.", ephemeral=True)
