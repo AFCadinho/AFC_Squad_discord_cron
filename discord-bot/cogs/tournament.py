@@ -2369,6 +2369,19 @@ class Tournaments(commands.Cog):
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
+    @app_commands.command(name="create_current_match_chs", description="Manually create all match channels of current round")
+    @app_commands.default_permissions(administrator=True)
+    async def create_current_match_chs(self, interaction: discord.Interaction):
+        if not interaction.guild or not self.current_round:
+            await interaction.response.send_message(f"Either no guild or current round set.\n Current Round: {self.current_round}")
+            return
+
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        with Session.begin() as session:
+            tournament = self.__check_if_tournament(session, self.current_tournament)
+            await self._setup_next_round(session, tournament.id, (self.current_round - 1), interaction.guild)
+
+        await interaction.followup.send(f"Match Channels created for round: {self.current_round}")
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Tournaments(bot))
