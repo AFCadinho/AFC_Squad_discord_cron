@@ -4,6 +4,7 @@ import os
 from sqlalchemy import select, desc, asc
 from database import Session
 from models import User
+from typing import Any
 
 WINS_TRACKER_WEBHOOK = os.getenv("WEBHOOK_WINS", "")
 INACTIVE_REPORT_WEBHOOK = os.getenv("INACTIVE_REPORT_WEBHOOK", "")
@@ -24,10 +25,14 @@ def get_members(session):
     return session.scalars(stmt).all()
 
 
-def send_rapport(webhook, embed, ping=None):
-    payload = {"embeds": [embed]}
-    if ping:
+def send_rapport(webhook, embed, message=None, ping=None):
+    payload: dict[str, Any] = {"embeds": [embed]}
+    if ping and message:
+        payload["content"] = f"{ping}\n{message}"
+    elif ping:
         payload["content"] = ping
+    elif message:
+        payload["content"] = message
 
     response = requests.post(webhook, json=payload)
     response.raise_for_status()
@@ -104,7 +109,15 @@ def run():
 
     send_rapport(WINS_TRACKER_WEBHOOK, current_wins_embed)
     if send_inactive_report:
-        send_rapport(INACTIVE_REPORT_WEBHOOK, inactive_users_embed, ping=ping)
+        message = (
+            "🛠️ **Moderator Action Required**\n\n"
+            "The following players appear to be inactive the last 2 weeks.\n"
+            "Please **manually verify their in-game Crew Wars wins** against the numbers in this list:\n"
+            "• If their **in-game wins are the same**, contact them to confirm activity.\n"
+            "• If their **in-game wins are higher**, update the database manually and remind them to submit their own scores next time.\n\n"
+            "Thank you for keeping the records accurate! 🙏"
+        )
+        send_rapport(INACTIVE_REPORT_WEBHOOK, inactive_users_embed, message=message, ping=ping)
 
 
 if __name__ == "__main__":

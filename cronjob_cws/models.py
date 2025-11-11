@@ -1,19 +1,9 @@
+import sqlalchemy as sa
+
 from typing import Optional
 from datetime import datetime
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-import sqlalchemy as sa
-import os
-
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
-from sqlalchemy import create_engine
-
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+psycopg2://user:password@localhost:5432/dbname"
-)
-
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
-Session = sessionmaker(bind=engine)
 
 class Base(DeclarativeBase):
     pass
