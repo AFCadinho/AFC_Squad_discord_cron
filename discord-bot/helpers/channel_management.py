@@ -42,7 +42,7 @@ class ChannelFactory:
 
         if not discord_user1 or not discord_user2:
             return None
-        
+
         discord_users = [discord_user1, discord_user2]
 
         channel_name = f"{discord_user1.display_name}-vs-{discord_user2.display_name}"
@@ -51,14 +51,20 @@ class ChannelFactory:
             await text_channel.send(
                 f"🎯 **Match Channel Created — Round {match_round}!**\n\n"
                 f"**{discord_user1.mention}** 🆚 **{discord_user2.mention}**\n\n"
-                "📅 **What to do next:**\n"
-                "• Discuss and agree on a time for your match.\n"
-                "• Once confirmed, schedule it with:\n"
-                "```/schedule_match opponent:<@opponent> match_round:<round> year:<yyyy> month:<mm> day:<dd> hour:<hh> minute:<mm>```\n"
-                "• Please schedule **before next Wednesday**.\n\n"
-                "🏆 After your battle, the winner should report the result using:\n"
+                "📅 **Step 1 — Propose a match time:**\n"
+                "• Make sure your timezone is set first using `/set_timezone`.\n"
+                "• Then propose a time **in *your own* local timezone** using:\n"
+                "```/request_datetime opponent:<@opponent> requested_dt:<YYYY-MM-DD HH:MM>```\n"
+                "🕒 Example: `/request_datetime opponent:@Ash requested_dt:2025-11-13 18:30`\n"
+                "👉 The bot will automatically convert your local time into a Discord timestamp, so everyone sees it correctly in *their own timezone*.\n\n"
+                "✅ **Step 2 — Schedule the confirmed time:**\n"
+                "Once you both agree on a time, schedule the match so it appears in the official schedule channel:\n"
+                "```/schedule_match opponent:<@opponent> match_round:<round> year:<yyyy> month:<mm> day:<dd> hour:<hh> minute:<mm>```\n\n"
+                "⏳ **Deadline:** Please schedule your match **before next Wednesday**.\n\n"
+                "🏆 **After the match:**\n"
+                "The winner should report the result using:\n"
                 "```/report_win winner:<@winner> video_link:<link>```\n\n"
-                "Good luck to both players — may the best trainer win! ⚔️"
+                "Good luck to both trainers — may the best one win! ⚔️"
             )
 
             return text_channel.name

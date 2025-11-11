@@ -2383,5 +2383,54 @@ class Tournaments(commands.Cog):
 
         await interaction.followup.send(f"Match Channels created for round: {self.current_round}")
 
+    @app_commands.command(name="request_datetime", description="Post a time that auto-localizes for everyone. Format: YYYY-MM-DD HH:MM (24h)")
+    async def request_datetime(self, interaction: discord.Interaction, opponent: discord.Member, requested_dt: str):
+
+        if not interaction.guild:
+            return
+
+        with Session.begin() as session:
+
+            crew_member = discord_id_to_member(session, interaction.user.id)
+            if not crew_member:
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed(
+                        "❌ Error", "You are not registered in our database. Please contact management.", discord.Color.red()),
+                    ephemeral=True
+                )
+                return
+
+            tz = self.__get_timezone_info(crew_member)
+            if not tz:
+                await interaction.response.send_message(
+                    embed=self.build_simple_embed(
+                        "❌ Error", f"No Country or Timezone set. Please use `/set_timezone`, or contact management to set your country.", discord.Color.red()),
+                    ephemeral=True
+                )
+                return
+
+            try:
+                dt = datetime.strptime(requested_dt, "%Y-%m-%d %H:%M").replace(tzinfo=tz)
+            except ValueError:
+                await interaction.response.send_message(
+                    "❌ Invalid format.\n\n"
+                    "**Correct format:** `YYYY-MM-DD HH:MM`\n"
+                    "Example: `2025-11-13 18:30` (24-hour clock)", ephemeral=True
+                )
+                return
+            dt_utc_string = dt.astimezone(timezone.utc).timestamp()
+            ts = int(dt_utc_string)
+
+            # Plain text, nice layout, keeps the ping
+            message = (
+                f"{opponent.mention}\n"
+                f"**📅 Match time proposal**\n"
+                f"— Full: <t:{ts}:F>\n"
+                f"— Relative: <t:{ts}:R>\n"
+                f"_Requested by {interaction.user.mention}_"
+            )
+
+            await interaction.response.send_message(message)
+
 async def setup(bot: commands.Bot):
     await bot.add_cog(Tournaments(bot))
