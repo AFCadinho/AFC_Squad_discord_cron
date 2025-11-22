@@ -36,7 +36,7 @@ class MembershipRoles(commands.Cog):
         await member.add_roles(*[r for r in roles if r])
 
         await interaction.response.send_message(
-            f"🌟 Everyone welcome **{member.display_name}**, our newest **New Recruit**!\nLet’s make some memories together 🚀",
+            f"🌟 @everyone welcome **{member.mention}**, our newest **New Recruit**!\nLet’s make some memories together 🚀",
             ephemeral=False
         )
 
@@ -61,7 +61,7 @@ class MembershipRoles(commands.Cog):
             await member.add_roles(full_member_role)
 
         await interaction.response.send_message(
-            f"🔥 Let’s gooo!!! **{member.display_name}** just got promoted to **FULL CREW MEMBER**! 🎉 Show 'em some love! 💯",
+            f"🔥 @everyone Let’s gooo!!! **{member.mention}** just got promoted to **FULL CREW MEMBER**! 🎉 Show 'em some love! 💯",
             ephemeral=False
         )
 
