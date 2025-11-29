@@ -59,8 +59,7 @@ class CrewWars(commands.Cog):
 
         return next_event
 
-    @app_commands.command(name="crewwars", description="Show the next Crew Wars time and tier.")
-    async def crewwars(self, interaction):
+    async def next_cws(self) -> discord.Embed:
         next_event = self.find_next_event()
         event_datetime = next_event[0]
         tier = next_event[3]
@@ -89,8 +88,15 @@ class CrewWars(commands.Cog):
         embed.set_footer(
             text="All times are automatically adjusted to your local timezone.")
 
-        await interaction.response.send_message(embed=embed)
+        return embed
 
+    
+    @app_commands.command(name="crewwars", description="Show the next Crew Wars time and tier.")
+    async def crewwars(self, interaction):
+        embed = await self.next_cws()
+        await interaction.response.send_message(embed=embed)
+    
+    
     @app_commands.command(name="ping_cws", description="Ping the Crew Wars role with time remaining")
     async def ping_cws(self, interaction: discord.Interaction):
         next_event = self.find_next_event()
@@ -142,8 +148,7 @@ class CrewWars(commands.Cog):
 
         return results
 
-    @app_commands.command(name="crewwars_schedule", description="Show the next 7 Crew Wars events.")
-    async def crewwars_schedule(self, interaction: discord.Interaction):
+    async def show_cws_schedule(self) -> discord.Embed:
         events = self.get_next_events(7)
 
         embed = Embed(
@@ -160,8 +165,13 @@ class CrewWars(commands.Cog):
                 inline=False
             )
 
-        await interaction.response.send_message(embed=embed)
+        return embed
+    
+    @app_commands.command(name="crewwars_schedule", description="Show the next 7 Crew Wars events.")
+    async def crewwars_schedule(self, interaction: discord.Interaction):
+        embed = await self.show_cws_schedule()
 
+        await interaction.response.send_message(embed=embed)
 
 
 async def setup(bot):

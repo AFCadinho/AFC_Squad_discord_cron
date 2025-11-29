@@ -1,5 +1,7 @@
-from .buttons import SignUpView
+from .signup_buttons import SignUpView
+from .server_tools_buttons import ServerToolsView
 
 __all__=[
-    "SignUpView"
+    "SignUpView",
+    "ServerToolsView"
 ]

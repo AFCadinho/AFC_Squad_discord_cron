@@ -8,8 +8,8 @@ class GameTools(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="tide", description="Check if it's currently Low Tide or High Tide at Shoal Cave.")
-    async def tide(self, interaction: discord.Interaction):
+
+    async def show_tide(self, interaction: discord.Interaction):
         now = datetime.now(timezone.utc)
         hour = now.hour
         minute = now.minute
@@ -44,6 +44,10 @@ class GameTools(commands.Cog):
         file = discord.File(file_path, filename="shoal_tide_chart.png")
 
         await interaction.response.send_message(embed=embed, file=file, ephemeral=True)
+
+    @app_commands.command(name="tide", description="Check if it's currently Low Tide or High Tide at Shoal Cave.")
+    async def tide(self, interaction: discord.Interaction):
+        await self.show_tide(interaction)
 
 async def setup(bot):
     await bot.add_cog(GameTools(bot))
