@@ -3,7 +3,7 @@ import os
 import logging
 
 from discord.ext import commands
-from discord import app_commands
+from discord import app_commands, Embed
 from database.database import Session
 from helpers import get_timezones, discord_id_to_member, CommandLogger, EmbedFactory
 from zoneinfo import ZoneInfo
@@ -104,6 +104,76 @@ class Member(commands.Cog):
             mention_author=False
         )
 
+    async def show_activity_status(self, member: discord.Member):
+        with Session() as session:
+            crew_member = discord_id_to_member(session, member.id)
+            if not crew_member:
+                # Not registered in DB
+                embed = Embed(
+                    title="Activity Status",
+                    description=(
+                        "❌ You are not registered in the system.\n"
+                        "Please contact a Commander if you think this is a mistake."
+                    ),
+                    color=discord.Color.red(),
+                )
+                return embed
+
+            last_checkin_wins = crew_member.crew_wars_wins_checkin
+            current_registered_wins = crew_member.crew_wars_wins
+
+            # If we don't have data yet
+            if not last_checkin_wins or not current_registered_wins:
+                embed = Embed(
+                    title="Activity Status",
+                    description=(
+                        "⚠️ We don't have enough data to check your activity yet.\n\n"
+                        "Please use **Update CWS Wins** first so we can start tracking."
+                    ),
+                    color=discord.Color.yellow(),
+                )
+                embed.set_footer(text="We compare your current wins to your last recorded check-in.")
+                return embed
+
+            # --- Activity check ---
+            if current_registered_wins > last_checkin_wins:
+                status = "🟢 **Active**"
+                desc = (
+                    "Your Crew Wars wins have increased since your last check-in.\n"
+                    "You are currently marked as **Active**."
+                )
+                color = discord.Color.green()
+            else:
+                status = "🔴 **No recent activity**"
+                desc = (
+                    "Your Crew Wars wins have **not** increased since your last check-in.\n"
+                    "You are currently flagged as having no recent activity.\n\n"
+                    "If you haven't played recently, we encourage you to join the next Crew Wars event — "
+                    "every win helps the crew! 💪🔥\n"
+                    "If you *have* played, make sure your total wins are up to date."
+                )
+                color = discord.Color.red()
+
+
+            embed = Embed(
+                title="Activity Status",
+                description=(
+                    f"Status for **{member.display_name}**\n\n"
+                    f"{status}\n\n"
+                    f"{desc}\n\n"
+                    f"**Last check-in wins:** {last_checkin_wins}\n"
+                    f"**Current registered wins:** {current_registered_wins}"
+                ),
+                color=color,
+            )
+
+            if member.display_avatar:
+                embed.set_thumbnail(url=member.display_avatar.url)
+
+            embed.set_footer(text="Activity is based on changes in your total Crew Wars wins.")
+            return embed
+
+    
     async def update_total_wins(self, interaction: discord.Interaction, wins: int):
         discord_id = interaction.user.id
         discord_user = interaction.user
@@ -209,8 +279,7 @@ class Member(commands.Cog):
     async def update_wins_cw(self, interaction: discord.Interaction, wins: int):
         await self.update_total_wins(interaction, wins)
 
-    @app_commands.command(name="trainer_card", description="View a crew member's Trainer Card")
-    async def trainer_card(self, interaction: discord.Interaction, user: discord.Member, hidden: bool = False):
+    async def show_trainer_card(self, interaction: discord.Interaction, user: discord.Member, hidden: bool = False) -> discord.Embed | None:
         with Session() as session:
             row = discord_id_to_member(session, user.id)
             if not row:
@@ -249,6 +318,15 @@ class Member(commands.Cog):
                     value=f"Use `/show_won_tournaments` to see all wins.",
                     inline=False
                 )
+
+        return embed
+    
+    @app_commands.command(name="trainer_card", description="View a crew member's Trainer Card")
+    async def trainer_card(self, interaction: discord.Interaction, user: discord.Member, hidden: bool = False):
+
+        embed = await self.show_trainer_card(interaction, user)
+        if not embed:
+            return
 
         if hidden:
             await interaction.response.send_message(embed=embed, ephemeral=False)
