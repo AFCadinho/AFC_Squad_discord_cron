@@ -1,13 +1,14 @@
 {
-    "Activity": "We can see when players last log in, but just playing is not enough. Every member should take part in **Crew Wars** to stay active. We check **Crew Wars wins** every 2 weeks. If your wins stay the same for 2 checks in a row, we will see you as **inactive** and may contact you to ask what’s going on.",
-    
-    "Updating Wins": "Use the `/update_wins_cw` command to update your Crew Wars wins after every event you join. Always enter your **real total number of wins**, not just how many you got in one event. Make sure your number is correct — we also **check wins manually** to keep everything fair. If you make a mistake, message a staff member to fix it.",
-    
+    "Activity": "We can see when players last log in, but just logging in is not enough. Every member is expected to take part in **Crew Wars** to stay active.\n\nEvery 2 weeks we check your **total Crew Wars wins**. If your wins stay the same for 2 checks in a row, we will see you as **inactive** and may contact you to ask what’s going on.\n\nTo avoid this, join Crew Wars when you can and keep your **total wins** up to date in <#1434444189084684318> using the **Update CWS Wins** button.",
+  
+    "Updating Wins": "After each Crew Wars event, update your **total Crew Wars wins** in <#1434444189084684318> using the **Update CWS Wins** button.\n\nAlways enter your **overall total number of wins**, not just the wins from one event. If you enter the wrong number by mistake, staff can fix it for you.",
+  
     "Absence": "If you cannot play for a while (holiday, school, or other reasons), please **message a staff member** and tell us. We will mark you as away so you are not counted as inactive.",
-    
+  
     "In-Game Behavior": "Be **kind and respectful** to other players. What you do shows what our crew is like. Do not be toxic or rude. If there is a problem, talk to a leader or mod instead of starting fights.",
-    
+  
     "Leaving the Crew": "You can play however you want! If you want to leave, start a new crew, or join another one, that’s okay — just **tell us first**. Leaving without saying anything is seen as disrespectful and may get you blocked or banned.",
-    
+  
     "Crew Storage": "Storage is for **trusted, active members**. It helps everyone share and grow stronger together.\n**Rules:**\n• Return Pokémon or items after use (especially before logging out)\n• Do not trade, keep, or sell things from storage\n• Misuse can make you lose access or get banned from storage"
-}
+  }
+  
