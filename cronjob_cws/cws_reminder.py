@@ -5,29 +5,14 @@ import os
 WEBHOOK_URL = os.getenv("WEBHOOK_URL", "")
 REMINDER_ROLE = os.getenv("REMINDER_ROLE_ID", 0)
 
-# schedule = [
-#     {"day": "Monday", "time": "16:00", "tier": "UnderUsed"},
-#     {"day": "Wednesday", "time": "10:00", "tier": "UnderUsed"},
-#     {"day": "Wednesday", "time": "20:00", "tier": "OverUsed"},
-#     {"day": "Thursday", "time": "20:00", "tier": "UnderUsed"},
-#     {"day": "Saturday", "time": "03:00", "tier": "OverUsed"},
-#     {"day": "Sunday", "time": "01:00", "tier": "OverUsed"},
-#     {"day": "Sunday", "time": "18:00", "tier": "OverUsed"},
-# ]
-
-# Halloween Event 
 schedule = [
-    {"day": "Monday",    "time": "16:00", "tier": "UnderUsed"},
-    {"day": "Wednesday", "time": "09:00",
-     "tier": "UnderUsed"},  # was 10:00
-    {"day": "Wednesday", "time": "19:00",
-     "tier": "OverUsed"},   # was 20:00
-    {"day": "Thursday",  "time": "19:00",
-     "tier": "UnderUsed"},  # was 20:00
-    {"day": "Saturday",  "time": "03:00", "tier": "OverUsed"},
-    {"day": "Sunday",    "time": "00:00",
-     "tier": "OverUsed"},   # was 01:00
-    {"day": "Sunday",    "time": "18:00", "tier": "OverUsed"},
+    {"day": "Monday", "time": "16:00", "tier": "UnderUsed"},
+    {"day": "Wednesday", "time": "10:00", "tier": "UnderUsed"},
+    {"day": "Wednesday", "time": "20:00", "tier": "OverUsed"},
+    {"day": "Thursday", "time": "20:00", "tier": "UnderUsed"},
+    {"day": "Saturday", "time": "03:00", "tier": "OverUsed"},
+    {"day": "Sunday", "time": "01:00", "tier": "OverUsed"},
+    {"day": "Sunday", "time": "18:00", "tier": "OverUsed"},
 ]
 
 weekdays = {
